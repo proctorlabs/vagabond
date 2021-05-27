@@ -1,0 +1,48 @@
+{{ config_notice }}
+
+server:
+	interface: 0.0.0.0@5353
+	interface: ::0@5353
+
+	access-control: 0.0.0.0/0 allow
+	access-control: ::0/0 allow
+
+    use-syslog: no
+
+	do-ip4: yes
+    do-ip6: yes
+    do-udp: yes
+    do-tcp: yes
+    do-daemonize: yes
+    so-reuseport: yes
+
+    cache-max-ttl: 86400
+    cache-min-ttl: 0
+
+    harden-dnssec-stripped: no
+    serve-expired: no
+    outgoing-num-tcp: 10
+    incoming-num-tcp: 10
+    num-queries-per-thread: 4096
+    outgoing-range: 8192
+
+    infra-host-ttl: 900
+    infra-cache-numhosts: 10000
+
+	verbosity: 1
+	statistics-interval: 600
+	statistics-cumulative: yes
+
+# TODO: Block list
+
+forward-zone:
+    name: "{{ network.domain }}."
+        forward-addr: {{ network.address }}
+
+forward-zone:
+    name: "."
+{%- for server in dns.servers %}
+        forward-addr: {{ server -}}
+{% endfor %}
+
+{{ dns.extra_config }}

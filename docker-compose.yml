@@ -1,0 +1,31 @@
+version: '3.9'
+services:
+  ui:
+    build:
+      context: .
+      dockerfile: dev.dockerfile
+      target: ui
+    entrypoint: []
+    command: ['yarn', 'serve']
+    network_mode: host
+    working_dir: /app
+    volumes:
+      - '$PWD/ui:/app'
+
+  api:
+    build:
+      context: .
+      dockerfile: dev.dockerfile
+      target: service
+    command: ['quart', 'run', '-h', '0.0.0.0']
+    entrypoint: []
+    privileged: true
+    network_mode: host
+    environment:
+      QUART_DEBUG: 1
+      QUART_ENV: development
+      QUART_APP: api:create_app()
+    volumes:
+      - '$PWD/api:/api'
+      - '$PWD/dev.toml:/etc/vagabond.toml'
+      - '$PWD/data:/data'

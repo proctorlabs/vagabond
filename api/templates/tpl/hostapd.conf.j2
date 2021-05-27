@@ -1,0 +1,27 @@
+{{ config_notice }}
+
+# logging
+logger_stdout=-1
+logger_stdout_level=2
+
+#auth and security
+macaddr_acl=0
+wpa=2
+wpa_passphrase=testpass
+wpa_key_mgmt=WPA-PSK
+wpa_pairwise=CCMP
+rsn_pairwise=CCMP
+auth_algs=1
+
+# interface and SSID
+country_code=US
+ssid={{ hostapd_ssid }}
+interface={{ hostapd_device }}
+# ctrl_interface=/var/run/hostapd
+ignore_broadcast_ssid=0
+
+channel={{hostapd_channel}}
+
+# {{ hostapd_device_note }}
+
+# {{ hostapd_device_options }}

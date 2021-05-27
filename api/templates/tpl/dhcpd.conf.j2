@@ -1,0 +1,17 @@
+{{ config_notice }}
+
+option domain-name "{{ network.domain }}";
+default-lease-time 600;
+max-lease-time 7200;
+ddns-update-style none;
+authoritative;
+
+subnet {{ network.subnet_address }} netmask {{ network.subnet_mask }} {
+    range {{ dhcp.range_start }} {{ dhcp.range_end }};
+    option subnet-mask {{ network.subnet_mask }};
+    option routers {{ network.address }};
+    option domain-name-servers {{ network.address }};
+    option broadcast-address {{ network.subnet_broadcast }};
+}
+
+{{ dhcp.extra_config }}
