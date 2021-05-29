@@ -26,6 +26,10 @@ class Templates:
             ),
         )
 
+    def render_string(self, name: str):
+        template = self.environment.get_template(name)
+        return template.render(self.context)
+
     def render(self, name: str, dest: Path):
         template = self.environment.get_template(name)
         contents = template.render(self.context)

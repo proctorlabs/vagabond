@@ -36,10 +36,6 @@ server:
 # TODO: Block list
 
 forward-zone:
-    name: "{{ network.domain }}."
-        forward-addr: {{ network.address }}
-
-forward-zone:
     name: "."
 {%- for server in dns.servers %}
         forward-addr: {{ server -}}

@@ -9,12 +9,12 @@ class Service(ABC):
     @property
     @abstractmethod
     def service_name(self):
-        return "Generic Service"
+        return ""
 
     @property
     @abstractmethod
     def service_command(self):
-        return ["sleep", "5"]
+        return []
 
     async def service_output(self, line, stderr=False):
         if stderr:

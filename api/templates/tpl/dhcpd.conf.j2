@@ -6,12 +6,24 @@ max-lease-time 7200;
 ddns-update-style none;
 authoritative;
 
-subnet {{ network.subnet_address }} netmask {{ network.subnet_mask }} {
-    range {{ dhcp.range_start }} {{ dhcp.range_end }};
-    option subnet-mask {{ network.subnet_mask }};
-    option routers {{ network.address }};
-    option domain-name-servers {{ network.address }};
-    option broadcast-address {{ network.subnet_broadcast }};
+{%- if network.lan_enabled %}
+subnet {{ network.lan_subnet_address }} netmask {{ network.lan_subnet_mask }} {
+    range {{ dhcp.lan_range_start }} {{ dhcp.lan_range_end }};
+    option subnet-mask {{ network.lan_subnet_mask }};
+    option routers {{ network.lan_address }};
+    option domain-name-servers {{ network.lan_address }};
+    option broadcast-address {{ network.lan_subnet_broadcast }};
 }
+{% endif %}
+
+{%- if network.wlan_enabled %}
+subnet {{ network.wlan_subnet_address }} netmask {{ network.wlan_subnet_mask }} {
+    range {{ dhcp.wlan_range_start }} {{ dhcp.wlan_range_end }};
+    option subnet-mask {{ network.wlan_subnet_mask }};
+    option routers {{ network.wlan_address }};
+    option domain-name-servers {{ network.wlan_address }};
+    option broadcast-address {{ network.wlan_subnet_broadcast }};
+}
+{% endif %}
 
 {{ dhcp.extra_config }}

@@ -33,18 +33,22 @@ def deep_merge(left, right, path=[]):
 CONFIG_DEFAULTS = {
     'network': {
         'domain': 'vagabond.lan',
-        'subnet': '192.168.1.0/24',
-        'address': '192.168.1.1',
-        'connection': [],
+        'wan': [],
+        'manage_routes': True,
         'lan': {
             'enabled': True,
             'interface': 'eth0',
+            'subnet': '192.168.1.0/24',
+            'address': '192.168.1.1',
         },
         'wlan': {
             'enabled': True,
             'interface': 'wlan0',
+            'subnet': '192.168.2.0/24',
+            'address': '192.168.2.1',
             'ssid': 'vagabond',
             'hostapd_config': '',
+            'channel': 0,
         },
     },
     'dns': {
@@ -55,9 +59,17 @@ CONFIG_DEFAULTS = {
     },
     'dhcp': {
         'enabled': True,
-        'range': {
-            'start': '192.168.1.100',
-            'end': '192.168.1.199',
+        'lan': {
+            'range': {
+                'start': '192.168.1.100',
+                'end': '192.168.1.199',
+            }
+        },
+        'wlan': {
+            'range': {
+                'start': '192.168.2.100',
+                'end': '192.168.2.199',
+            }
         },
         'extra_config': "",
     }
@@ -96,17 +108,29 @@ class Network(ConfigMixin):
     def asdict(self):
         return {
             'domain': self.domain,
-            'address': self.address,
+            'external_interfaces': self.external_interfaces,
+            'dhcp_interfaces': self.dhcp_interfaces,
+            'wlan_interfaces': self.wlan_interfaces,
+            'manage_routes': self.manage_routes,
+            'lan_address': self.lan_address,
+            'lan_enabled': self.lan_enabled,
+            'lan_interface': self.lan_interface,
+            'lan_subnet': f"{self.lan_subnet}",
+            'lan_subnet_prefixlen': self.lan_subnet_prefixlen,
+            'lan_subnet_address': self.lan_subnet_address,
+            'lan_subnet_mask': self.lan_subnet_mask,
+            'lan_subnet_broadcast': self.lan_subnet_broadcast,
+            'wlan_address': self.wlan_address,
             'wlan_enabled': self.wlan_enabled,
             'wlan_interface': self.wlan_interface,
             'wlan_ssid': self.wlan_ssid,
+            'wlan_channel': self.wlan_channel,
             'wlan_hostapd_config': self.wlan_hostapd_config,
-            'lan_enabled': self.lan_enabled,
-            'lan_interface': self.lan_interface,
-            'subnet': f"{self.subnet}",
-            'subnet_address': self.subnet_address,
-            'subnet_mask': self.subnet_mask,
-            'subnet_broadcast': self.subnet_broadcast,
+            'wlan_subnet': f"{self.wlan_subnet}",
+            'wlan_subnet_prefixlen': self.wlan_subnet_prefixlen,
+            'wlan_subnet_address': self.wlan_subnet_address,
+            'wlan_subnet_mask': self.wlan_subnet_mask,
+            'wlan_subnet_broadcast': self.wlan_subnet_broadcast,
         }
 
     @cached_property
@@ -114,8 +138,74 @@ class Network(ConfigMixin):
         return self.get_path("network.domain")
 
     @cached_property
-    def address(self):
-        return self.get_path("network.address")
+    def external_interfaces(self):
+        result = []
+        cfg = self.get_path("network.wan")
+        if cfg:
+            for ifinfo in cfg:
+                if ifinfo['type'] in ["dhcp", "wlan"]:
+                    result.append(ifinfo['interface'])
+        return result
+
+    @cached_property
+    def dhcp_interfaces(self):
+        result = []
+        cfg = self.get_path("network.wan")
+        if cfg:
+            for ifinfo in cfg:
+                if ifinfo['type'] == "dhcp":
+                    result.append(ifinfo)
+        return result
+
+    @cached_property
+    def wlan_interfaces(self):
+        result = []
+        cfg = self.get_path("network.wan")
+        if cfg:
+            for ifinfo in cfg:
+                if ifinfo['type'] == "wlan":
+                    result.append(ifinfo)
+        return result
+
+    @cached_property
+    def manage_routes(self):
+        return self.get_path("network.manage_routes")
+
+    @cached_property
+    def lan_address(self):
+        return self.get_path("network.lan.address")
+
+    @cached_property
+    def lan_enabled(self):
+        return self.get_path("network.lan.enabled")
+
+    @cached_property
+    def lan_interface(self):
+        return self.get_path("network.lan.interface")
+
+    @cached_property
+    def lan_subnet(self):
+        return ipaddress.ip_network(self.get_path("network.lan.subnet"), strict=False)
+
+    @property
+    def lan_subnet_prefixlen(self):
+        return self.lan_subnet.prefixlen
+
+    @property
+    def lan_subnet_address(self):
+        return self.lan_subnet.network_address
+
+    @property
+    def lan_subnet_mask(self):
+        return self.lan_subnet.netmask
+
+    @property
+    def lan_subnet_broadcast(self):
+        return self.lan_subnet.broadcast_address
+
+    @cached_property
+    def wlan_address(self):
+        return self.get_path("network.wlan.address")
 
     @cached_property
     def wlan_enabled(self):
@@ -130,32 +220,32 @@ class Network(ConfigMixin):
         return self.get_path("network.wlan.ssid")
 
     @cached_property
+    def wlan_channel(self):
+        return self.get_path("network.wlan.channel")
+
+    @cached_property
     def wlan_hostapd_config(self):
         return self.get_path("network.wlan.hostapd_config")
 
     @cached_property
-    def lan_enabled(self):
-        return self.get_path("network.lan.enabled")
-
-    @cached_property
-    def lan_interface(self):
-        return self.get_path("network.lan.interface")
-
-    @cached_property
-    def subnet(self):
-        return ipaddress.ip_network(self.get_path("network.subnet"), strict=False)
+    def wlan_subnet(self):
+        return ipaddress.ip_network(self.get_path("network.wlan.subnet"), strict=False)
 
     @property
-    def subnet_address(self):
-        return self.subnet.network_address
+    def wlan_subnet_prefixlen(self):
+        return self.wlan_subnet.prefixlen
 
     @property
-    def subnet_mask(self):
-        return self.subnet.netmask
+    def wlan_subnet_address(self):
+        return self.wlan_subnet.network_address
 
     @property
-    def subnet_broadcast(self):
-        return self.subnet.broadcast_address
+    def wlan_subnet_mask(self):
+        return self.wlan_subnet.netmask
+
+    @property
+    def wlan_subnet_broadcast(self):
+        return self.wlan_subnet.broadcast_address
 
 
 class Dhcp(ConfigMixin):
@@ -165,8 +255,10 @@ class Dhcp(ConfigMixin):
     def asdict(self):
         return {
             'enabled': self.enabled,
-            'range_start': self.range_start,
-            'range_end': self.range_end,
+            'lan_range_start': self.lan_range_start,
+            'lan_range_end': self.lan_range_end,
+            'wlan_range_start': self.wlan_range_start,
+            'wlan_range_end': self.wlan_range_end,
             'extra_config': self.extra_config,
         }
 
@@ -175,12 +267,20 @@ class Dhcp(ConfigMixin):
         return self.get_path("dhcp.enabled")
 
     @cached_property
-    def range_start(self):
-        return self.get_path("dhcp.range.start")
+    def lan_range_start(self):
+        return self.get_path("dhcp.lan.range.start")
 
     @cached_property
-    def range_end(self):
-        return self.get_path("dhcp.range.end")
+    def lan_range_end(self):
+        return self.get_path("dhcp.lan.range.end")
+
+    @cached_property
+    def wlan_range_start(self):
+        return self.get_path("dhcp.wlan.range.start")
+
+    @cached_property
+    def wlan_range_end(self):
+        return self.get_path("dhcp.wlan.range.end")
 
     @cached_property
     def extra_config(self):

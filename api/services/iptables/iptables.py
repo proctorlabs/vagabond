@@ -1,9 +1,12 @@
 import logging
+from pathlib import Path
 from ..commands import Command
 from ...config import Config
 from ...templates import Templates
 
 log = logging.getLogger('quart.app')
+
+SYSCTL_FILE = Path("/data/sysctl.conf")
 
 
 class IPTables(object):
@@ -13,17 +16,12 @@ class IPTables(object):
 
     async def start(self):
         # Configure sysctls needed for routing, setup iptables
-        result = await Command.run_script('''\
-sysctl net/ipv4/ip_forward=1
-sysctl net/ipv6/conf/default/forwarding=1
-sysctl net/ipv6/conf/all/forwarding=1
-sysctl net/ipv4/icmp_echo_ignore_broadcasts=1
-sysctl net/ipv4/icmp_ignore_bogus_error_responses=1
-sysctl net/ipv4/icmp_echo_ignore_all=0
-sysctl net/ipv4/conf/all/log_martians=0
-sysctl net/ipv4/conf/default/log_martians=0
-''')
-        log.info(result.output)
+        self.templates.render("sysctl.conf.j2", SYSCTL_FILE)
+        await Command.run_command('sysctl', ['-f', SYSCTL_FILE])
+        if self.config.network.manage_routes:
+            script = self.templates.render_string("iptables.sh.j2")
+            ipt_result = await Command.run_script(script)
+            log.info("Iptables output: %s", ipt_result.output)
 
     async def status(self):
         return dict({

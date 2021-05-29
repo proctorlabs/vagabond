@@ -1,6 +1,7 @@
 from quart import Quart, jsonify, request
 import os
 import logging
+import asyncio
 from .services import Unbound, IPTables, Hostapd, Wireguard, Dhcpd, Interfaces
 from .templates import Templates
 from .config import Config
@@ -20,15 +21,25 @@ def create_app(config_object=""):
     dhcpd = Dhcpd(config, templates)
     unbound = Unbound(config, templates)
 
-    @app.before_first_request
-    async def startup():
+    async def start_services():
         log.info("Starting services...")
-        await iptables.start()
-        await dhcpd.start()
-        await hostapd.start()
-        await unbound.start()
-        await wireguard.start()
+        await asyncio.gather(
+            interfaces.start(),
+            iptables.start(),
+            hostapd.start(),
+        )
+        await asyncio.gather(
+            unbound.start(),
+            dhcpd.start(),
+            wireguard.start(),
+        )
         log.info("Services started!")
+
+    @app.while_serving
+    async def lifespan():
+        asyncio.create_task(start_services())
+        yield
+        log.warning("Shutting down!")
 
     @app.route('/api/status')
     async def status():
