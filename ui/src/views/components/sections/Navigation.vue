@@ -35,13 +35,13 @@
           to: '/',
         }"
       />
-      <sidebar-item
+      <!-- <sidebar-item
         :item="{
           icon: 'mdi-signal',
           title: 'LTE',
           to: '/lte',
         }"
-      />
+      /> -->
       <sidebar-item
         :item="{
           icon: 'mdi-wifi',
@@ -49,20 +49,20 @@
           to: '/wireless-client',
         }"
       />
-      <sidebar-item
+      <!-- <sidebar-item
         :item="{
           icon: 'mdi-key-variant',
           title: 'Wireguard',
           to: '/wireguard',
         }"
-      />
-      <sidebar-item
+      /> -->
+      <!-- <sidebar-item
         :item="{
           icon: 'mdi-access-point-network',
           title: 'Access Point',
           to: '/access-point',
         }"
-      />
+      /> -->
       <div />
     </v-list>
 

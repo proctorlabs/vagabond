@@ -2,6 +2,18 @@
   <v-footer id="view-footer">
     <v-container>
       <v-row align="center" no-gutters>
+        <v-col cols="12" md="auto" v-if="socketOnline">
+          <div class="body-1 font-weight-light pt-6 pt-md-0 text-center">
+            API Connected
+          </div>
+        </v-col>
+
+        <v-col cols="12" md="auto" v-else>
+          <div class="body-1 font-weight-light pt-6 pt-md-0 text-center">
+            API Not Connected!
+          </div>
+        </v-col>
+
         <v-spacer class="hidden-sm-and-down" />
 
         <v-col cols="12" md="auto">
@@ -15,8 +27,12 @@
 </template>
 
 <script>
+import { mapGetters } from 'vuex'
 export default {
   name: 'ViewFooter',
+  computed: {
+    ...mapGetters({ socketOnline: 'socketOnline' }),
+  },
 }
 </script>
 

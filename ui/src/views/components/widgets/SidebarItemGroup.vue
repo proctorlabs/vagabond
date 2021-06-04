@@ -51,7 +51,7 @@ import kebabCase from 'lodash/kebabCase'
 import { mapState } from 'vuex'
 
 export default {
-  name: 'ItemGroup',
+  name: 'SidebarItemGroup',
 
   inheritAttrs: false,
 

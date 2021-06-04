@@ -11,20 +11,21 @@ HOSTAPD_CONFIG = HOSTAPD_DIRECTORY / "hostapd.conf"
 
 
 class Hostapd(object):
-    def __init__(self, config: Config, templates: Templates):
-        self.config = config
-        self.templates = templates
+    def __init__(self, ioc):
+        self.config = ioc.config
+        self.templates = ioc.templates
         self._process = Process("hostapd", [
             "hostapd", "/data/hostapd/hostapd.conf"
-        ])
+        ], ioc=ioc)
 
     async def status(self):
-        return dict({
-            'version': (await Command.run_command('hostapd', ['-v'])).output_lines[0]
-        })
+        return self._process.status
 
     async def start(self):
         if self.config.network.wlan_enabled:
             HOSTAPD_DIRECTORY.mkdir(parents=True, exist_ok=True)
             self.templates.render("hostapd.conf.j2", HOSTAPD_CONFIG)
             await self._process.start()
+
+    async def stop(self):
+        await self._process.stop()

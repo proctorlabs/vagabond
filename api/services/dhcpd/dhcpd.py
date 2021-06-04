@@ -14,17 +14,15 @@ DHCPD_CONFIG = DHCPD_DIRECTORY / "dhcpd.conf"
 
 
 class Dhcpd(object):
-    def __init__(self, config: Config, templates: Templates):
-        self.config = config
-        self.templates = templates
+    def __init__(self, ioc):
+        self.config = ioc.config
+        self.templates = ioc.templates
         self._process = Process("isc-dhcpd-server", [
-            "dhcpd", "-cf", "/data/dhcpd/dhcpd.conf", "-lf", "/data/dhcpd/dhcpd.leases", "-f", "-q", "--no-pid"
-        ])
+            "dhcpd", "-cf", "/data/dhcpd/dhcpd.conf", "-lf", "/data/dhcpd/dhcpd.leases", "-f", "--no-pid"
+        ], ioc=ioc)
 
     async def status(self):
-        return dict({
-            'version': (await Command.run_command('dhcpd', ['--version'])).output,
-        })
+        return self._process.status
 
     async def start(self):
         if self.config.dhcp.enabled:
@@ -32,3 +30,6 @@ class Dhcpd(object):
             DHCPD_LEASES.touch(exist_ok=True)
             self.templates.render("dhcpd.conf.j2", DHCPD_CONFIG)
             await self._process.start()
+
+    async def stop(self):
+        await self._process.stop()

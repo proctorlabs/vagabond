@@ -6,9 +6,68 @@
     outlined
     app
   >
-    <v-subheader>Overview</v-subheader>
-    <h2 class="text-center">Services online: {{ online }}</h2>
-    <h3 class="text-right"><v-btn v-on:click="getStatus">update</v-btn></h3>
+    <h1 class="text-center">Overview</h1>
+    <v-row no-gutters>
+      <v-spacer />
+      <v-col cols="5">
+        <v-simple-table dense>
+          <template v-slot:default>
+            <thead>
+              <tr>
+                <th class="text-left">
+                  Interface
+                </th>
+                <th class="text-left">
+                  MAC
+                </th>
+                <th class="text-left">
+                  Local Addresses
+                </th>
+              </tr>
+            </thead>
+
+            <tbody>
+              <tr v-for="item in interfaces" :key="item.ifname">
+                <td>
+                  {{ item.ifname }}
+                </td>
+                <td>{{ item.address }}</td>
+                <td>
+                  <span v-for="addr in item.addr_info" :key="addr.local"
+                    >{{ addr.local }} |
+                  </span>
+                </td>
+              </tr>
+            </tbody>
+          </template>
+        </v-simple-table>
+      </v-col>
+
+      <v-spacer />
+
+      <v-col cols="5">
+        <v-simple-table dense>
+          <template v-slot:default>
+            <tbody>
+              <tr>
+                <td>hostapd</td>
+                <td>{{ services.hostapd.running ? 'running' : 'stopped' }}</td>
+              </tr>
+              <tr>
+                <td>dhcpd:</td>
+                <td>{{ services.dhcpd.running ? 'running' : 'stopped' }}</td>
+              </tr>
+              <tr>
+                <td>unbound</td>
+                <td>{{ services.unbound.running ? 'running' : 'stopped' }}</td>
+              </tr>
+            </tbody>
+          </template>
+        </v-simple-table>
+      </v-col>
+
+      <v-spacer />
+    </v-row>
   </v-sheet>
 </template>
 
@@ -17,12 +76,13 @@ import { mapGetters, mapActions } from 'vuex'
 export default {
   name: 'Dashboard',
   methods: {
-    ...mapActions(['getStatus']),
+    ...mapActions(['getStatus', 'listInterfaces']),
   },
   computed: {
-    ...mapGetters({ online: 'serviceOnline' }),
+    ...mapGetters({ interfaces: 'interfaces', services: 'services' }),
   },
   mounted: function() {
+    this.listInterfaces()
     this.getStatus()
   },
 }

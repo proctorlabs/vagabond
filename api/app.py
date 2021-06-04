@@ -1,56 +1,67 @@
-from quart import Quart, jsonify, request
+from quart import Quart, jsonify, request, websocket
 import os
 import logging
 import asyncio
-from .services import Unbound, IPTables, Hostapd, Wireguard, Dhcpd, Interfaces
-from .templates import Templates
-from .config import Config
+import json
+from .ioc import IOC
 
 
 def create_app(config_object=""):
     app = Quart(__name__)
     app.logger.info('Application starting...')
     log = logging.getLogger('quart.app')
-    config = Config("/etc/vagabond.toml")
-    templates = Templates(config)
-
-    hostapd = Hostapd(config, templates)
-    iptables = IPTables(config, templates)
-    interfaces = Interfaces(config, templates)
-    wireguard = Wireguard(config, templates)
-    dhcpd = Dhcpd(config, templates)
-    unbound = Unbound(config, templates)
+    ioc = IOC()
 
     async def start_services():
         log.info("Starting services...")
         await asyncio.gather(
-            interfaces.start(),
-            iptables.start(),
-            hostapd.start(),
+            ioc.interfaces.start(),
+            ioc.iptables.start(),
+            ioc.hostapd.start(),
         )
         await asyncio.gather(
-            unbound.start(),
-            dhcpd.start(),
-            wireguard.start(),
+            ioc.unbound.start(),
+            ioc.dhcpd.start(),
+            ioc.wireguard.start(),
         )
         log.info("Services started!")
+
+    async def stop_services():
+        log.info("Stopping services...")
+        await asyncio.gather(
+            ioc.interfaces.stop(),
+            ioc.iptables.stop(),
+            ioc.hostapd.stop(),
+            ioc.unbound.stop(),
+            ioc.dhcpd.stop(),
+            ioc.wireguard.stop(),
+        )
+        log.info("Services stopped!")
 
     @app.while_serving
     async def lifespan():
         asyncio.create_task(start_services())
         yield
-        log.warning("Shutting down!")
+        await stop_services()
+
+    @app.websocket('/api/sock')
+    async def ws():
+        log.info("New socket connection")
+        try:
+            await ioc.socket_handler.handle_connection()
+        except asyncio.CancelledError:
+            log.info('Client disconnected')
+            raise
 
     @app.route('/api/status')
     async def status():
         return jsonify({
-            'status': 'running',
-            'hostapd': await hostapd.status(),
-            'iptables': await iptables.status(),
-            'interfaces': await interfaces.status(),
-            'wireguard': await wireguard.status(),
-            'unbound': await unbound.status(),
-            'dhcpd': await dhcpd.status(),
+            'hostapd': await ioc.hostapd.status(),
+            'wireguard': await ioc.wireguard.status(),
+            'unbound': await ioc.unbound.status(),
+            'dhcpd': await ioc.dhcpd.status(),
+            'iptables': await ioc.iptables.status(),
+            'interfaces': await ioc.interfaces.status(),
         })
 
     @app.route('/api/ping')

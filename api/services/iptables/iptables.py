@@ -10,9 +10,10 @@ SYSCTL_FILE = Path("/data/sysctl.conf")
 
 
 class IPTables(object):
-    def __init__(self, config: Config, templates: Templates):
-        self.config = config
-        self.templates = templates
+    def __init__(self, ioc):
+        self.config = ioc.config
+        self.templates = ioc.templates
+        self._enabled = False
 
     async def start(self):
         # Configure sysctls needed for routing, setup iptables
@@ -22,9 +23,10 @@ class IPTables(object):
             script = self.templates.render_string("iptables.sh.j2")
             ipt_result = await Command.run_script(script)
             log.info("Iptables output: %s", ipt_result.output)
+            self._enabled = True
+
+    async def stop(self):
+        self._enabled = False
 
     async def status(self):
-        return dict({
-            'version': (await Command.run_command('iptables', ['-V'])).output,
-            'tables': (await Command.run_command('iptables', ['-S'])).output,
-        })
+        return {'enabled': self._enabled}

@@ -5,11 +5,11 @@ log = logging.getLogger('quart.app')
 
 
 class DhcpInterface(object):
-    def __init__(self, interface: str):
+    def __init__(self, interface: str, ioc):
         self._interface = interface
         self._process = Process(f"{interface} dhcp", [
             "udhcpc", "-i", f"{interface}", "-f",
-        ])
+        ], ioc=ioc)
 
     @property
     def interface(self):

@@ -1,0 +1,14 @@
+{{ config_notice }}
+
+[Interface]
+Address = {{ wireguard.address }}
+PrivateKey = {{ wireguard.private_key }}
+ListenPort = 51820
+
+{% for peer in wireguard.peers -%}
+[Peer]
+PublicKey = {{ peer.public_key }}
+AllowedIPs = {{ peer.allowed_ips }}
+Endpoint = {{ peer.endpoint }}
+PersistentKeepalive = 25
+{% endfor %}

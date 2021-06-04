@@ -9,8 +9,8 @@ TEMPLATE_DIR = (Path(__file__).parent.absolute()) / "tpl"
 
 
 class Templates:
-    def __init__(self, config):
-        self._config = config
+    def __init__(self, ioc):
+        self._config = ioc.config
 
     @cached_property
     def context(self):

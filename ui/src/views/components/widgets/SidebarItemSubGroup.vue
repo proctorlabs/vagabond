@@ -4,7 +4,7 @@
 
 <script>
 export default {
-  name: 'ItemSubGroup',
+  name: 'SidebarItemSubGroup',
 
   components: {
     SidebarItemGroup: () =>

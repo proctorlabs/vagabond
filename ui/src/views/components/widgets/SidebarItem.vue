@@ -28,7 +28,7 @@
 import Themeable from 'vuetify/lib/mixins/themeable'
 
 export default {
-  name: 'Item',
+  name: 'SidebarItem',
 
   mixins: [Themeable],
 

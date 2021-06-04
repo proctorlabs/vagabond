@@ -1,13 +1,29 @@
+import struct
+import fcntl
+import socket
 import logging
 import re
 import yaml
 
+from pathlib import Path
 from ..process import Process
 from ..commands import Command
 
 
 log = logging.getLogger('quart.app')
 STARTING_TABS = re.compile("^(\t)*")
+
+
+def get_ip_address(ifname):
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        return socket.inet_ntoa(fcntl.ioctl(
+            s.fileno(),
+            0x8915,  # SIOCGIFADDR
+            struct.pack('256s', ifname[:15].encode())
+        )[20:24])
+    except:
+        return None
 
 
 def iw_list_to_dict(items):
@@ -85,6 +101,9 @@ def iw_parse_lines(lines, depth=0):
 def iw_result_to_scan_result(iw_result):
     result = []
     for k, v in iw_result.items():
+        if isinstance(v, str):
+            log.warning("Unexpected result from scan: %s", v)
+            continue
         result.append({
             'bssid': k[4:21],
             'ssid': v.get("SSID", None),
@@ -96,11 +115,10 @@ def iw_result_to_scan_result(iw_result):
 
 
 class WifiInterface(object):
-    def __init__(self, interface: str):
+    def __init__(self, interface: str, ioc):
         self._interface = interface
-        self._process = Process(f"{interface} dhcp", [
-            "udhcpc", "-i", f"{interface}", "-f",
-        ])
+        self._ioc = ioc
+        self._iwd = ioc.iwd_manager
 
     @property
     def interface(self):
@@ -112,13 +130,66 @@ class WifiInterface(object):
 
     async def start(self):
         pass
-        # await self._process.start()
+
+    async def wifi_status(self):
+        try:
+            device = await self._iwd.get_device(self.interface)
+            if device:
+                station = await device.get_station()
+                network = await station.get_connected_network()
+                result = dict()
+                result['name'] = device.name
+                result['address'] = device.address
+                result['mode'] = device.mode
+                result['state'] = station.state
+                result['ip'] = get_ip_address(device.name)
+                if network:
+                    result['ssid'] = network.name
+                    result['rssi'] = network.rssi
+                return result
+        except Exception as e:
+            log.warning("Failed wifi status due to failure!\n%s", e)
+        return {'state': 'unknown'}
 
     async def wifi_scan(self):
-        lines = (await Command.run_command('iw', ['dev', self.interface, 'scan', "-u"])).output_lines
-        iw_result = iw_parse_lines(lines)
-        wifidata = iw_result_to_scan_result(iw_result)
-        return wifidata
+        try:
+            device = await self._iwd.get_device(self.interface)
+            if device:
+                station = await device.get_station()
+                scan_results = await station.get_networks()
+                results = []
+                for item in scan_results:
+                    results.append({
+                        'ssid': item.name,
+                        'signal': item.rssi,
+                        'security': item.type,
+                        'known': item.has_known_network,
+                    })
+                if len(results) > 0:
+                    await self._ioc.socket_handler.broadcast({
+                        'type': 'wifi_scan_result',
+                        'data': results,
+                    })
+        except Exception as e:
+            log.warning("Failed wifi scan due to failure!\n%s", e)
+
+    async def connect(self, ssid: str, psk: str):
+        append_args = []
+        if psk:
+            append_args = ['--passphrase', psk]
+        res = await Command.run_command('iwctl', [
+            'station', self.interface, 'connect', ssid, *append_args
+        ])
+        log.warning(f"{res.output}")
+
+    async def disconnect(self):
+        try:
+            device = await self._iwd.get_device(self.interface)
+            if device:
+                station = await device.get_station()
+                await station.disconnect()
+        except Exception as e:
+            log.warning("Failed wifi disconnect due to failure!\n%s", e)
 
     @staticmethod
     async def get_wlan_devices(self):

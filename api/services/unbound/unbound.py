@@ -11,20 +11,21 @@ UNBOUND_CONFIG = UNBOUND_DIRECTORY / "unbound.conf"
 
 
 class Unbound(object):
-    def __init__(self, config: Config, templates: Templates):
-        self.config = config
-        self.templates = templates
+    def __init__(self, ioc):
+        self.config = ioc.config
+        self.templates = ioc.templates
         self._process = Process("unbound", [
             "unbound", "-d", "-p", "-c", "/data/unbound/unbound.conf"
-        ])
+        ], ioc=ioc)
 
     async def status(self):
-        return dict({
-            'version': (await Command.run_command('unbound', ['-V'])).output_lines[0]
-        })
+        return self._process.status
 
     async def start(self):
         if self.config.dns.enabled:
             UNBOUND_DIRECTORY.mkdir(parents=True, exist_ok=True)
             self.templates.render("unbound.conf.j2", UNBOUND_CONFIG)
             await self._process.start()
+
+    async def stop(self):
+        await self._process.stop()
