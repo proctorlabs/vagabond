@@ -31,5 +31,5 @@ class Wireguard(object):
 
     async def status(self):
         return dict({
-            'status': self._process.status,
+            'enabled': self.config.wireguard.enabled,
         })
