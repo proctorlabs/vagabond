@@ -1,0 +1,32 @@
+[network]
+domain = "vagabond.lan"
+manage_routes = true
+
+[[network.wan]]
+type = 'dhcp'
+interface = 'eth0'
+
+[[network.wan]]
+type = 'wlan'
+interface = 'wlan0'
+
+[network.lan]
+enabled = true
+
+[network.wlan]
+enabled = true
+
+[dns]
+enabled = true
+block_malicious = false
+
+[dhcp]
+enabled = true
+
+[dhcp.lan.range]
+start = "172.16.5.100"
+end = "172.16.5.199"
+
+[dhcp.wlan.range]
+start = "172.16.6.100"
+end = "172.16.6.199"

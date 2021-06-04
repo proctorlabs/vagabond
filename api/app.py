@@ -68,4 +68,9 @@ def create_app(config_object=""):
     async def ping():
         return ""
 
+    @app.route('/', defaults={'path': 'index.html'})
+    @app.route('/<path:path>')
+    async def staticfiles(path):
+        return await app.send_static_file(path)
+
     return app
