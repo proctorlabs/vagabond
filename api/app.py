@@ -6,6 +6,9 @@ import json
 from .ioc import IOC
 
 
+# https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts
+
+
 def create_app(config_object=""):
     app = Quart(__name__)
     app.logger.info('Application starting...')
@@ -44,6 +47,7 @@ def create_app(config_object=""):
         yield
         await stop_services()
 
+    # API Routes
     @app.websocket('/api/sock')
     async def ws():
         log.info("New socket connection")
@@ -68,9 +72,30 @@ def create_app(config_object=""):
     async def ping():
         return ""
 
+    @app.route('/api/<path:path>')
+    async def defaultapi(path):
+        return jsonify({'error': "Not an API endpoint"}), 404
+
+    # Asset Routes
+    @app.route('/js/<path:path>')
+    async def js_assets(path):
+        return await app.send_static_file(f"js/{path}")
+
+    @app.route('/css/<path:path>')
+    async def css_assets(path):
+        return await app.send_static_file(f"css/{path}")
+
+    @app.route('/fonts/<path:path>')
+    async def font_assets(path):
+        return await app.send_static_file(f"fonts/{path}")
+
+    @app.route('/favicon.ico')
+    async def favicon():
+        return await app.send_static_file("favicon.ico")
+
     @app.route('/', defaults={'path': 'index.html'})
-    @app.route('/<path:path>')
-    async def staticfiles(path):
-        return await app.send_static_file(path)
+    @app.route('/<path>')
+    async def indexfile(path):
+        return await app.send_static_file("index.html")
 
     return app

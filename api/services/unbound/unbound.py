@@ -6,7 +6,7 @@ from ...config import Config
 from ...templates import Templates
 
 
-UNBOUND_DIRECTORY = Path("/data/unbound")
+UNBOUND_DIRECTORY = Path("/etc/unbound")
 UNBOUND_CONFIG = UNBOUND_DIRECTORY / "unbound.conf"
 
 
@@ -15,7 +15,7 @@ class Unbound(object):
         self.config = ioc.config
         self.templates = ioc.templates
         self._process = Process("unbound", [
-            "unbound", "-d", "-p", "-c", "/data/unbound/unbound.conf"
+            "unbound", "-d", "-p", "-c", f"{UNBOUND_CONFIG}"
         ], ioc=ioc)
 
     async def status(self):

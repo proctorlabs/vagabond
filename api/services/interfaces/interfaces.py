@@ -3,8 +3,10 @@ import json
 import asyncio
 
 from pathlib import Path
+from functools import cached_property
 from .dhcp_interface import DhcpInterface
 from .wifi_interface import WifiInterface
+from .unmanaged_interface import UnmanagedInterface
 from ..commands import Command
 from ..process import Process
 from ...config import Config
@@ -20,9 +22,6 @@ class Interfaces(object):
     def __init__(self, ioc):
         self.config = ioc.config
         self.templates = ioc.templates
-        self._wans = []
-        self._dhcp_wans = []
-        self._wifi_wans = []
         self._ioc = ioc
         self._iwd_manager = ioc.iwd_manager
         self._dbus = Process("dbus", [
@@ -34,62 +33,79 @@ class Interfaces(object):
         IWD_ETC.mkdir(exist_ok=True, parents=True)
         self.templates.render("iwd-main.conf.j2", IWD_CONF)
         await self._dbus.start()
-        await asyncio.gather(
-            self.enable_local_interfaces(),
-            self.enable_wan_interfaces(),
-        )
-        await self._iwd.start("-i", ",".join(self.wifi_interfaces))
+        for iface in self.all_interfaces:
+            await iface.start()
+        await self.enable_local_interfaces()
+        await self._iwd.start("-i", ",".join(self.wifi_interface_names))
         await self._iwd_manager.setup()
 
     async def stop(self):
         await self._iwd.stop()
         await self._dbus.stop()
 
-    @property
+    @cached_property
+    def wifi_interface_names(self):
+        results = []
+        for iface in self.wifi_interfaces:
+            results.append(iface.interface)
+        return results
+
+    @cached_property
+    def all_interfaces(self):
+        results = []
+        results.extend(self.dhcp_interfaces)
+        results.extend(self.wifi_interfaces)
+        results.extend(self.unmanaged_interfaces)
+        if self.lan_interface:
+            results.append(self.lan_interface)
+        if self.wlan_interface:
+            results.append(self.wlan_interface)
+        return results
+
+    @cached_property
+    def dhcp_interfaces(self):
+        results = []
+        for iface in self.config.network.dhcp_interfaces:
+            results.append(DhcpInterface(iface['interface'], self._ioc))
+        return results
+
+    @cached_property
     def wifi_interfaces(self):
         results = []
         for iface in self.config.network.wlan_interfaces:
-            results.append(iface['interface'])
+            results.append(WifiInterface(iface['interface'], self._ioc))
         return results
 
-    async def enable_wan_interfaces(self):
-        for iface in self.config.network.dhcp_interfaces:
-            dhcp_iface = DhcpInterface(iface['interface'], self._ioc)
-            await dhcp_iface.start()
-            self._wans.append(dhcp_iface)
-            self._dhcp_wans.append(dhcp_iface)
+    @cached_property
+    def unmanaged_interfaces(self):
+        results = []
+        for iface in self.config.network.unmanaged_interfaces:
+            results.append(UnmanagedInterface(iface['interface'], self._ioc))
+        return results
 
-        for iface in self.config.network.wlan_interfaces:
-            wifi_iface = WifiInterface(iface['interface'], self._ioc)
-            await wifi_iface.start()
-            self._wans.append(wifi_iface)
-            self._wifi_wans.append(wifi_iface)
+    @cached_property
+    def lan_interface(self):
+        if self.config.network.lan_enabled:
+            return UnmanagedInterface(self.config.network.lan_interface, self._ioc)
+        return None
+
+    @cached_property
+    def wlan_interface(self):
+        if self.config.network.wlan_enabled:
+            return UnmanagedInterface(self.config.network.wlan_interface, self._ioc)
+        return None
 
     async def enable_local_interfaces(self):
-        if self.config.network.lan_enabled:
-            await self.enable_static_interface(
-                self.config.network.lan_interface,
+        if self.lan_interface:
+            await self.lan_interface.set_address(
                 self.config.network.lan_address,
                 self.config.network.lan_subnet_prefixlen,
             )
-        if self.config.network.wlan_enabled:
-            await self.enable_static_interface(
-                self.config.network.wlan_interface,
+        if self.wlan_interface:
+            await self.wlan_interface.set_address(
                 self.config.network.wlan_address,
                 self.config.network.wlan_subnet_prefixlen,
             )
-
-    async def enable_static_interface(self, interface, address, prefix):
-        log.info("Enabling interface %s", interface)
-        result = await Command.run_command(
-            'ip', ['addr', 'change', f"{address}/{prefix}", "dev", interface])
-        if not result.success:
-            log.warning(
-                "Failed to set if address on %s due to %s", interface, result.output)
-        result = await Command.run_command('ip', ['link', 'set', interface, "up"])
-        if not result.success:
-            log.warning(
-                "Failed to enable link on %s due to %s", interface, result.output)
 
     async def get_interfaces(self):
         if_data = json.loads((await Command.run_command('ip', ['-j', 'addr'])).output)
@@ -104,18 +120,18 @@ class Interfaces(object):
         return dict({'interfaces': await self.get_interfaces()})
 
     async def wifi_scan(self):
-        for iface in self._wifi_wans:
+        for iface in self.wifi_interfaces:
             asyncio.create_task(iface.wifi_scan())
 
     async def wifi_status(self):
-        for iface in self._wifi_wans:
+        for iface in self.wifi_interfaces:
             return await iface.wifi_status()
 
     async def wifi_connect(self, ssid: str, psk: str):
         if ssid:
-            for iface in self._wifi_wans:
+            for iface in self.wifi_interfaces:
                 await iface.connect(ssid, psk)
 
     async def wifi_disconnect(self):
-        for iface in self._wifi_wans:
+        for iface in self.wifi_interfaces:
             await iface.disconnect()

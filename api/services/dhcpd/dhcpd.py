@@ -8,9 +8,10 @@ from ...templates import Templates
 
 log = logging.getLogger('quart.app')
 
-DHCPD_DIRECTORY = Path("/data/dhcpd")
-DHCPD_LEASES = DHCPD_DIRECTORY / "dhcpd.leases"
+DHCPD_DIRECTORY = Path("/etc/dhcp")
+DHCPD_LIB_DIRECTORY = Path("/var/lib/dhcp")
 DHCPD_CONFIG = DHCPD_DIRECTORY / "dhcpd.conf"
+DHCPD_LEASES = DHCPD_LIB_DIRECTORY / "dhcpd.leases"
 
 
 class Dhcpd(object):
@@ -18,7 +19,7 @@ class Dhcpd(object):
         self.config = ioc.config
         self.templates = ioc.templates
         self._process = Process("isc-dhcpd-server", [
-            "dhcpd", "-cf", "/data/dhcpd/dhcpd.conf", "-lf", "/data/dhcpd/dhcpd.leases", "-f", "--no-pid"
+            "dhcpd", "-cf", f"{DHCPD_CONFIG}", "-lf", f"{DHCPD_LEASES}", "-f", "--no-pid"
         ], ioc=ioc)
 
     async def status(self):

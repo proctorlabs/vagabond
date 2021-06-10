@@ -1,10 +1,10 @@
 {{ config_notice }}
 
 server:
-	interface: 0.0.0.0@5353
-	interface: ::0@5353
-
+	interface: 0.0.0.0@{{ dns.port }}
 	access-control: 0.0.0.0/0 allow
+
+	interface: ::0@{{ dns.port }}
 	access-control: ::0/0 allow
 
     use-syslog: no
@@ -33,6 +33,8 @@ server:
 	statistics-interval: 600
 	statistics-cumulative: yes
 
+{{ dns.extra_config }}
+
 # TODO: Block list
 
 forward-zone:
@@ -40,5 +42,3 @@ forward-zone:
 {%- for server in dns.servers %}
         forward-addr: {{ server -}}
 {% endfor %}
-
-{{ dns.extra_config }}

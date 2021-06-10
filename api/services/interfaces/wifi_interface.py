@@ -6,6 +6,7 @@ import re
 import yaml
 
 from pathlib import Path
+from .base_interface import BaseInterface
 from ..process import Process
 from ..commands import Command
 
@@ -114,26 +115,21 @@ def iw_result_to_scan_result(iw_result):
     return result
 
 
-class WifiInterface(object):
-    def __init__(self, interface: str, ioc):
-        self._interface = interface
-        self._ioc = ioc
-        self._iwd = ioc.iwd_manager
+class WifiInterface(BaseInterface):
+    @property
+    def interface_type(self):
+        return "wifi"
 
     @property
-    def interface(self):
-        return self._interface
-
-    @property
-    def dhcp_running(self):
-        return self._process.running
+    def iwd(self):
+        return self._ioc.iwd_manager
 
     async def start(self):
-        pass
+        await super().start()
 
     async def wifi_status(self):
         try:
-            device = await self._iwd.get_device(self.interface)
+            device = await self.iwd.get_device(self.interface)
             if device:
                 station = await device.get_station()
                 network = await station.get_connected_network()
@@ -153,7 +149,7 @@ class WifiInterface(object):
 
     async def wifi_scan(self):
         try:
-            device = await self._iwd.get_device(self.interface)
+            device = await self.iwd.get_device(self.interface)
             if device:
                 station = await device.get_station()
                 scan_results = await station.get_networks()
@@ -184,7 +180,7 @@ class WifiInterface(object):
 
     async def disconnect(self):
         try:
-            device = await self._iwd.get_device(self.interface)
+            device = await self.iwd.get_device(self.interface)
             if device:
                 station = await device.get_station()
                 await station.disconnect()

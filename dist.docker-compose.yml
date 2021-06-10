@@ -1,0 +1,11 @@
+version: '3.9'
+services:
+  app:
+    build:
+      context: .
+      dockerfile: dist.dockerfile
+    privileged: true
+    network_mode: host
+    volumes:
+      - '$PWD/dev.toml:/etc/vagabond.toml'
+      - '$PWD/data:/data'

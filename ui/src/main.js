@@ -4,6 +4,8 @@ import App from './App.vue'
 import router from './router'
 import store from './store'
 import VueNativeSock from 'vue-native-websocket'
+import '@fontsource/roboto'
+import '@mdi/font/css/materialdesignicons.min.css'
 import './sass/main.scss'
 
 var host = window.location.host

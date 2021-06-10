@@ -55,6 +55,6 @@ COPY --from=ui /ui/dist/ /vagabond/static/
 COPY vagabond.toml /etc/vagabond.toml
 COPY api/ /vagabond/
 
-EXPOSE 5000
-HEALTHCHECK --interval=90s CMD [ "curl", "-sL", "http://localhost:5000/api/ping" ]
-CMD [ "/usr/local/bin/hypercorn", "-w", "1", "-b", "0.0.0.0:5000", "vagabond:create_app()" ]
+EXPOSE 80
+HEALTHCHECK --interval=90s CMD [ "curl", "-sL", "http://localhost:80/api/ping" ]
+CMD [ "/usr/local/bin/hypercorn", "-w", "1", "-b", "0.0.0.0:80", "vagabond:create_app()" ]

@@ -7,7 +7,17 @@ Vue.use(Vuex)
 var store_obj = {
   state: {
     interfaces: {},
-    services: {},
+    services: {
+      hostapd: {
+        running: false,
+      },
+      dhcpd: {
+        running: false,
+      },
+      unbound: {
+        running: false,
+      },
+    },
     service: {
       status: null,
       hostapd: {
