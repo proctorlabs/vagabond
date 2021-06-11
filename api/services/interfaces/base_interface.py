@@ -1,6 +1,8 @@
 import logging
 import json
 from abc import ABC, abstractproperty
+from functools import cached_property
+from pathlib import Path
 from ..commands import Command
 
 log = logging.getLogger('quart.app')
@@ -65,6 +67,10 @@ class BaseInterface(ABC):
         self._ip_addr = json.loads((await Command.run_command("ip", [
             "-j", "address", "show", f"{self.interface}",
         ])).output)[0]
+
+    @cached_property
+    def sysfs_path(self):
+        return Path("/sys/class/net") / self.interface
 
     @abstractproperty
     def interface_type(self):
