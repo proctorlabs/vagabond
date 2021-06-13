@@ -35,8 +35,11 @@ class Interfaces(object):
         IWD_ETC.mkdir(exist_ok=True, parents=True)
         self.templates.render("iwd-main.conf.j2", IWD_CONF)
         await self._dbus.start()
-        await self._iwd.start("-I", ",".join(self.iwd_interface_blacklist))
-        await self._iwd_manager.setup()
+
+        if self.iwd_enabled:
+            await self._iwd.start("-I", ",".join(self.iwd_interface_blacklist))
+            await self._iwd_manager.setup()
+
         for iface in self.all_interfaces:
             await iface.start()
 
@@ -49,6 +52,10 @@ class Interfaces(object):
         for iface in interfaces:
             results.append(iface.interface)
         return results
+
+    @cached_property
+    def iwd_enabled(self):
+        return len(self.wifi_interfaces) > 0
 
     @cached_property
     def all_interfaces(self):

@@ -6,9 +6,6 @@ import json
 from .ioc import IOC
 
 
-# https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts
-
-
 def create_app(config_object=""):
     app = Quart(__name__)
     app.logger.info('Application starting...')

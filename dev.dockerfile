@@ -39,7 +39,8 @@ RUN pip install \
     toml \
     ZODB \
     pyyaml \
-    dbus-next
+    dbus-next \
+    aiohttp
 
 COPY --from=iwd-builder /dist/ /
 

@@ -30,9 +30,9 @@ class IPTables(object):
         await Command.run_command('sysctl', ['-f', SYSCTL_FILE])
         if self.enabled:
             script = self.templates.render_string("iptables.sh.j2")
-            log.info(f"ipt: {script}")
+            # log.debug("ipt: %s", script)
             ipt_result = await Command.run_script(script)
-            log.info("Iptables output: %s", ipt_result.output)
+            # log.debug("Iptables output: %s", ipt_result.output)
             self._started = True
 
     async def stop(self):
