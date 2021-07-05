@@ -1,0 +1,146 @@
+<node>
+    <interface name="org.freedesktop.DBus.ObjectManager">
+        <method name="GetManagedObjects">
+            <arg name="objpath_interfaces_and_properties" type="a{oa{sa{sv}}}" direction="out" />
+        </method>
+
+        <signal name="InterfacesAdded">
+            <arg name="object_path" type="o" />
+            <arg name="interfaces_and_properties" type="a{sa{sv}}" />
+        </signal>
+
+        <signal name="InterfacesRemoved">
+            <arg name="object_path" type="o" />
+            <arg name="interfaces" type="as" />
+        </signal>
+    </interface>
+
+    <interface name="net.connman.iwd.AgentManager">
+        <method name="RegisterAgent">
+            <arg name="path" type="o" direction="in" />
+        </method>
+
+        <method name="UnregisterAgent">
+            <arg name="path" type="o" direction="in" />
+        </method>
+    </interface>
+
+    <interface name="net.connman.iwd.p2p.ServiceManager">
+        <method name="RegisterDisplayService">
+            <arg name="properties" type="a{sv}" direction="in" />
+        </method>
+
+        <method name="UnregisterDisplayService"></method>
+    </interface>
+
+    <interface name="net.connman.iwd.Adapter">
+        <property name="Powered" type="b" access="readwrite" />
+        <property name="Model" type="s" access="read" />
+        <property name="Vendor" type="s" access="read" />
+        <property name="Name" type="s" access="read" />
+        <property name="SupportedModes" type="as" access="read" />
+    </interface>
+
+    <interface name="org.freedesktop.DBus.Properties">
+        <method name="Get">
+            <arg name="interface_name" type="s" direction="in" />
+            <arg name="property_name" type="s" direction="in" />
+            <arg name="value" type="v" direction="out" />
+        </method>
+
+        <method name="Set">
+            <arg name="interface_name" type="s" direction="in" />
+            <arg name="property_name" type="s" direction="in" />
+            <arg name="value" type="v" direction="in" />
+        </method>
+
+        <method name="GetAll">
+            <arg name="interface_name" type="s" direction="in" />
+            <arg name="props" type="a{sv}" direction="out" />
+        </method>
+
+        <signal name="PropertiesChanged">
+            <arg name="interface_name" type="s" />
+            <arg name="changed_properties" type="a{sv}" />
+            <arg name="invalidated_properties" type="as" />
+        </signal>
+    </interface>
+
+    <interface name="net.connman.iwd.p2p.Device">
+        <method name="GetPeers">
+            <arg name="peers" type="a(on)" direction="out" />
+        </method>
+
+        <method name="RequestDiscovery"></method>
+
+        <method name="ReleaseDiscovery"></method>
+
+        <property name="Enabled" type="b" access="readwrite" />
+        <property name="Name" type="s" access="readwrite" />
+        <property name="AvailableConnections" type="q" access="read" />
+    </interface>
+    <node name="7" />
+
+    <interface name="net.connman.iwd.Device">
+        <property name="Name" type="s" access="read" />
+        <property name="Address" type="s" access="read" />
+        <property name="Powered" type="b" access="readwrite" />
+        <property name="Adapter" type="o" access="read" />
+        <property name="Mode" type="s" access="readwrite" />
+    </interface>
+
+    <interface name="net.connman.iwd.Station">
+        <method name="ConnectHiddenNetwork">
+            <arg name="name" type="s" direction="in" />
+        </method>
+
+        <method name="Disconnect"></method>
+
+        <method name="GetOrderedNetworks">
+            <arg name="networks" type="a(on)" direction="out" />
+        </method>
+
+        <method name="GetHiddenAccessPoints">
+            <arg name="accesspoints" type="a(sns)" direction="out" />
+        </method>
+
+        <method name="Scan"></method>
+
+        <method name="RegisterSignalLevelAgent">
+            <arg name="path" type="o" direction="in" />
+            <arg name="levels" type="an" direction="in" />
+        </method>
+
+        <method name="UnregisterSignalLevelAgent">
+            <arg name="path" type="o" direction="in" />
+        </method>
+
+        <property name="ConnectedNetwork" type="o" access="read" />
+        <property name="Scanning" type="b" access="read" />
+        <property name="State" type="s" access="read" />
+    </interface>
+
+    <interface name="net.connman.iwd.SimpleConfiguration">
+        <method name="PushButton"></method>
+
+        <method name="GeneratePin">
+            <arg name="pin" type="s" direction="out" />
+        </method>
+
+        <method name="StartPin">
+            <arg name="pin" type="s" direction="in" />
+        </method>
+
+        <method name="Cancel"></method>
+    </interface>
+
+    <interface name="net.connman.iwd.Network">
+        <method name="Connect"></method>
+
+        <property name="Name" type="s" access="read" />
+        <property name="Connected" type="b" access="read" />
+        <property name="Device" type="o" access="read" />
+        <property name="Type" type="s" access="read" />
+        <property name="KnownNetwork" type="o" access="read" />
+    </interface>
+</node>

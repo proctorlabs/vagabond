@@ -1,0 +1,15 @@
+# {{{ Self::CONFIG_NOTICE }}}
+
+# Logging
+logger_stdout=-1
+logger_stdout_level=2
+
+# Interface and wlan options
+ignore_broadcast_ssid=0
+ssid={{ network.wlan.ssid }}
+interface={{ network.wlan.interface }}
+# ctrl_interface=/var/run/hostapd
+channel={{ network.wlan.channel }}
+
+# Device configuration
+{{ network.wlan.hostapd_config }}

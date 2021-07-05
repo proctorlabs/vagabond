@@ -1,0 +1,14 @@
+# {{{ Self::CONFIG_NOTICE }}}
+
+[Interface]
+Address = {{{ self.wireguard.address }}}
+PrivateKey = {{{ self.wireguard.private_key }}}
+ListenPort = 51820
+
+{{#each self.wireguard.peers }}
+[Peer]
+PublicKey = {{{ this.public_key }}}
+AllowedIPs = {{{ this.allowed_ips }}}
+Endpoint = {{{ this.endpoint }}}
+PersistentKeepalive = 25
+{{/each }}
