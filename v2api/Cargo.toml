@@ -2,6 +2,7 @@
 name = "vagabond"
 version = "0.1.0"
 edition = "2018"
+workspace = "../"
 
 [dependencies]
 # Logging
@@ -23,13 +24,15 @@ iptables = { version="0.4" }
 # Async
 tokio = { version="1.7", features=["full"] }
 async-trait = { version="0.1" }
+futures = { version="0.3" }
 
 # CLI Args
 clap = { version="2.33" }
 structopt = { version="0.3" }
 
 # HTTP
-tide = { version="0.16" }
+# tide = { version="0.16" }
+warp = { version="0.3" }
 
 # Serialization
 serde = { version="1.0" }

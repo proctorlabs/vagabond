@@ -13,14 +13,18 @@ pub struct Vagabond {
     system: SystemManager,
     http: HttpServer,
     dns: DnsService,
+    dhcp: DhcpService,
+    hostapd: HostapdService,
 }
 
 impl Vagabond {
     pub async fn new(config: VagabondConfig) -> Result<Self> {
-        let (iwd, http, dns) = try_join!(
+        let (iwd, http, dns, dhcp, hostapd) = try_join!(
             IwdManager::new(config.clone()),
             HttpServer::new(config.clone()),
             DnsService::new(config.clone()),
+            DhcpService::new(config.clone()),
+            HostapdService::new(config.clone()),
         )?;
         Ok(Vagabond {
             system: SystemManager::new(&config),
@@ -28,13 +32,21 @@ impl Vagabond {
             iwd,
             http,
             dns,
+            dhcp,
+            hostapd,
         })
     }
 
     pub async fn start(&mut self) -> Result<()> {
         self.system.setup_sysctl()?;
         self.system.setup_iptables().await?;
-        try_join!(self.iwd.run_test(), self.http.spawn(), self.dns.spawn())?;
+        try_join!(
+            self.iwd.run_test(),
+            self.http.spawn(),
+            self.dns.spawn(),
+            self.dhcp.spawn(),
+            self.hostapd.spawn(),
+        )?;
 
         state::running().await;
         signal::ctrl_c().await?;

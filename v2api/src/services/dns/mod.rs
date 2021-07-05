@@ -32,8 +32,10 @@ impl DnsService {
 
     pub async fn spawn(&self) -> Result<()> {
         if self.config.dns.enabled {
-            UnboundConfigTemplate::write(self.config.clone()).await?;
+            // UnboundConfigTemplate::write(self.config.clone()).await?;
             self.process.clone().spawn().await?;
+        } else {
+            info!("DNS service is disabled");
         }
         Ok(())
     }
