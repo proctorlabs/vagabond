@@ -1,14 +1,10 @@
 use super::*;
 use anyhow::Result;
 use async_trait::async_trait;
+use futures::{FutureExt, StreamExt};
 use std::sync::Arc;
 use tokio::sync::Mutex;
-
-use futures::{FutureExt, StreamExt};
 use warp::Filter;
-
-// use tide::Request;
-// use tide::prelude::*;
 
 #[derive(Debug, Clone)]
 pub struct HttpServer {
@@ -24,9 +20,16 @@ impl HttpServer {
         })
     }
 
-    // async fn test_request(_: Request<()>) -> tide::Result {
-    //     Ok("Request received".into())
-    // }
+    fn handle_websocket(ws: warp::ws::Ws) -> impl warp::Reply {
+        ws.on_upgrade(|websocket| {
+            let (tx, rx) = websocket.split();
+            rx.forward(tx).map(|result| {
+                if let Err(e) = result {
+                    eprintln!("websocket error: {:?}", e);
+                }
+            })
+        })
+    }
 }
 
 #[async_trait]
@@ -40,40 +43,21 @@ impl Service for HttpServer {
     }
 
     async fn start(&self) -> Result<()> {
-        let root_path = warp::path::end().map(|| "Root path");
-        let index_path = warp::path("other").map(|| "Other path");
-        let readme = warp::path("readme").and(warp::fs::file("./README.md"));
-        let content = warp::path("content").and(warp::fs::dir("./static/"));
-        let ws = warp::path!("ws")
-            // The `ws()` filter will prepare the Websocket handshake.
+        let content = warp::get().and(warp::fs::dir("./static/"));
+
+        let alternate_index = warp::get().and(
+            warp::fs::file("./static/index.html")
+                .and(warp::path::param::<String>().and(warp::path::end()))
+                .map(|file, _param| file),
+        );
+
+        let ws = warp::path!("api" / "sock")
             .and(warp::ws())
-            .map(|ws: warp::ws::Ws| {
-                // And then our closure will be called when it completes...
-                ws.on_upgrade(|websocket| {
-                    // Just echo all messages back...
-                    let (tx, rx) = websocket.split();
-                    rx.forward(tx).map(|result| {
-                        if let Err(e) = result {
-                            eprintln!("websocket error: {:?}", e);
-                        }
-                    })
-                })
-            });
-        let routes = warp::get()
-            .and(root_path.or(index_path).or(readme).or(content))
-            .or(ws);
+            .map(Self::handle_websocket);
+
+        let routes = ws.or(content).or(alternate_index);
 
         warp::serve(routes).run(([127, 0, 0, 1], 8081)).await;
         Ok(())
     }
-
-    // async fn start(&self) -> Result<()> {
-    //     let mut app = tide::new();
-    //     app.at("/testget").get(Self::test_request);
-    //     app.at("/").serve_dir("static/")?;
-    //     app.at("/").serve_file("static/index.html")?;
-    //     debug!("Starting HTTP service...");
-    //     app.listen("127.0.0.1:8081").await?;
-    //     Ok(())
-    // }
 }

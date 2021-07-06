@@ -1,4 +1,5 @@
-use cidr_utils::cidr::*;
+// use cidr_utils::cidr::*;
+use ipnet::IpNet;
 use std::net::{IpAddr, Ipv4Addr};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -43,7 +44,7 @@ pub enum NetworkWan {
 pub struct NetworkLan {
     pub enabled: bool,
     pub interface: String,
-    pub subnet: Ipv4Cidr,
+    pub subnet: IpNet,
     pub address: IpAddr,
 }
 
@@ -52,7 +53,7 @@ impl Default for NetworkLan {
         Self {
             enabled: true,
             interface: "eth1".into(),
-            subnet: Ipv4Cidr::from_str("192.168.1.0/24").unwrap(),
+            subnet: "192.168.1.0/24".parse().unwrap(),
             address: Ipv4Addr::new(192, 168, 1, 1).into(),
         }
     }
@@ -63,7 +64,7 @@ impl Default for NetworkLan {
 pub struct NetworkWlan {
     pub enabled: bool,
     pub interface: String,
-    pub subnet: Ipv4Cidr,
+    pub subnet: IpNet,
     pub address: IpAddr,
     pub channel: u16,
     pub hostapd_config: String,
@@ -75,7 +76,7 @@ impl Default for NetworkWlan {
         Self {
             enabled: false,
             interface: "wlan0".into(),
-            subnet: Ipv4Cidr::from_str("192.168.2.0/24").unwrap(),
+            subnet: "192.168.2.0/24".parse().unwrap(),
             address: Ipv4Addr::new(192, 168, 2, 1).into(),
             channel: 1,
             hostapd_config: Default::default(),

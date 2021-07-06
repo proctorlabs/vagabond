@@ -240,20 +240,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "cidr-utils"
-version = "0.5.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "390f6ff81e5cca35a3d60953fcbfe7989162ddcdc6be20a45c5d002a19038c4f"
-dependencies = [
- "debug-helper",
- "num-bigint",
- "num-traits",
- "once_cell",
- "regex",
- "serde",
-]
-
-[[package]]
 name = "clap"
 version = "2.33.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -351,12 +337,6 @@ dependencies = [
  "libc",
  "tokio",
 ]
-
-[[package]]
-name = "debug-helper"
-version = "0.3.12"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "76fbd10dce159c002b9c688ae8ab7cd531151e185e0ad360f4bfea3b0eede3a8"
 
 [[package]]
 name = "derive_more"
@@ -860,6 +840,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "ipnet"
+version = "2.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "68f2d64f2edebec4ce84ad108148e67e1064789bee435edc5b60ad398714a3a9"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "iptables"
 version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1065,17 +1054,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3f6bb902e437b6d86e03cce10a7e2af662292c5dfef23b65899ea3ac9354ad44"
 dependencies = [
  "winapi",
-]
-
-[[package]]
-name = "num-bigint"
-version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4e0d047c1062aa51e256408c560894e5251f08925980e53cf1aa5bd00eec6512"
-dependencies = [
- "autocfg",
- "num-integer",
- "num-traits",
 ]
 
 [[package]]
@@ -2009,13 +1987,13 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-trait",
- "cidr-utils",
  "clap",
  "dbus",
  "dbus-tokio",
  "derive_more",
  "flexi_logger",
  "futures",
+ "ipnet",
  "iptables",
  "lazy_static",
  "log",

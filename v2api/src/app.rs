@@ -9,7 +9,7 @@ use tokio::{signal, try_join};
 #[derive(Debug, Clone)]
 pub struct Vagabond {
     config: VagabondConfig,
-    iwd: IwdManager,
+    // iwd: IwdManager,
     system: SystemManager,
     http: HttpServer,
     dns: DnsService,
@@ -19,8 +19,8 @@ pub struct Vagabond {
 
 impl Vagabond {
     pub async fn new(config: VagabondConfig) -> Result<Self> {
-        let (iwd, http, dns, dhcp, hostapd) = try_join!(
-            IwdManager::new(config.clone()),
+        let (http, dns, dhcp, hostapd) = try_join!(
+            // IwdManager::new(config.clone()),
             HttpServer::new(config.clone()),
             DnsService::new(config.clone()),
             DhcpService::new(config.clone()),
@@ -29,7 +29,7 @@ impl Vagabond {
         Ok(Vagabond {
             system: SystemManager::new(&config),
             config,
-            iwd,
+            // iwd,
             http,
             dns,
             dhcp,
@@ -41,7 +41,7 @@ impl Vagabond {
         self.system.setup_sysctl()?;
         self.system.setup_iptables().await?;
         try_join!(
-            self.iwd.run_test(),
+            // self.iwd.run_test(),
             self.http.spawn(),
             self.dns.spawn(),
             self.dhcp.spawn(),

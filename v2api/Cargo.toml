@@ -13,11 +13,10 @@ flexi_logger = { version="0.18" }
 anyhow = { version="1.0" }
 lazy_static = { version="1.4" }
 derive_more = { version="0.99" }
-cidr-utils = { version="0.5", features=["serde"] }
+ipnet = { version="2.3", features=["serde"] }
 
 # System
 sysctl = { version="0.4" }
-# libc = { version="0.2" }
 nix = { version="0.21" }
 iptables = { version="0.4" }
 
@@ -31,7 +30,6 @@ clap = { version="2.33" }
 structopt = { version="0.3" }
 
 # HTTP
-# tide = { version="0.16" }
 warp = { version="0.3" }
 
 # Serialization
