@@ -24,7 +24,7 @@ mod system;
 use anyhow::Result;
 use config::VagabondConfig;
 use flexi_logger::{AdaptiveFormat, Logger};
-use state::Status;
+use state::*;
 
 #[tokio::main]
 pub async fn main() -> Result<()> {

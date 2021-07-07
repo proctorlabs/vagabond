@@ -7,7 +7,7 @@ config_file! { UnboundConfigTemplate("unbound.conf.hbs") => "/etc/unbound/unboun
 #[derive(Debug, Clone)]
 pub struct DnsService {
     process: Arc<ProcessManager<DnsMeta>>,
-    config: VagabondConfig,
+    state_manager: StateManager,
 }
 
 #[derive(Debug, Clone)]
@@ -23,15 +23,15 @@ impl ProcessService for DnsMeta {
 }
 
 impl DnsService {
-    pub async fn new(config: VagabondConfig) -> Result<Self> {
+    pub async fn new(state_manager: StateManager) -> Result<Self> {
         Ok(Self {
-            process: Arc::new(ProcessManager::new(DnsMeta).await?),
-            config,
+            state_manager: state_manager.clone(),
+            process: Arc::new(ProcessManager::new(DnsMeta, state_manager).await?),
         })
     }
 
     pub async fn spawn(&self) -> Result<()> {
-        if self.config.dns.enabled {
+        if self.state_manager.config.dns.enabled {
             // UnboundConfigTemplate::write(self.config.clone()).await?;
             self.process.clone().spawn().await?;
         } else {

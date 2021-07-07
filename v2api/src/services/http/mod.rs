@@ -1,33 +1,58 @@
 use super::*;
 use anyhow::Result;
 use async_trait::async_trait;
-use futures::{FutureExt, StreamExt};
+use futures::StreamExt;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use warp::Filter;
+use websockets::WebsocketRxMessage;
+
+mod websockets;
 
 #[derive(Debug, Clone)]
 pub struct HttpServer {
     running: Arc<Mutex<bool>>,
-    config: VagabondConfig,
+    state_manager: StateManager,
 }
 
 impl HttpServer {
-    pub async fn new(config: VagabondConfig) -> Result<Self> {
+    pub async fn new(state_manager: StateManager) -> Result<Self> {
         Ok(HttpServer {
             running: Arc::new(Mutex::new(false)),
-            config,
+            state_manager,
         })
     }
 
     fn handle_websocket(ws: warp::ws::Ws) -> impl warp::Reply {
         ws.on_upgrade(|websocket| {
-            let (tx, rx) = websocket.split();
-            rx.forward(tx).map(|result| {
-                if let Err(e) = result {
-                    eprintln!("websocket error: {:?}", e);
+            let (_tx, mut rx) = websocket.split();
+            async move {
+                info!("Websocket connected");
+                loop {
+                    match rx.next().await {
+                        Some(Ok(m)) => {
+                            if let Ok(txt) = m.to_str() {
+                                let r = serde_json::from_str::<WebsocketRxMessage>(txt);
+                                if let Ok(parsed) = r {
+                                    let r = parsed.dispatch().await;
+                                    if let Err(e) = r {
+                                        warn!("Error dispatching websocket message!");
+                                        warn!("{}", e);
+                                    }
+                                } else {
+                                    warn!("Failed to parse websocket message! {:?}", r);
+                                }
+                            }
+                        }
+                        Some(Err(e)) => {
+                            warn!("Error received on websocket! {}", e);
+                            break;
+                        }
+                        _ => break,
+                    }
                 }
-            })
+                info!("Websocket disconnected");
+            }
         })
     }
 }
@@ -40,6 +65,10 @@ impl Service for HttpServer {
 
     fn restart_time(&self) -> u64 {
         15
+    }
+
+    async fn state_manager(&self) -> StateManager {
+        self.state_manager.clone()
     }
 
     async fn start(&self) -> Result<()> {

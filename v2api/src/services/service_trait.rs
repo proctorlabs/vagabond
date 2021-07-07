@@ -1,3 +1,5 @@
+use super::*;
+use crate::Status;
 use anyhow::Result;
 use async_trait::async_trait;
 
@@ -13,6 +15,7 @@ pub trait Service: Sized + Clone + Sync + Send {
     fn name(&self) -> &'static str;
     fn restart_time(&self) -> u64;
     async fn start(&self) -> Result<()>;
+    async fn state_manager(&self) -> StateManager;
 
     async fn spawn(&self) -> Result<()>
     where
@@ -30,7 +33,7 @@ pub trait Service: Sized + Clone + Sync + Send {
                     error!("{} service error: {}", self.name(), e);
                 }
             };
-            if crate::state::status().await == crate::Status::ShuttingDown {
+            if self.state_manager().await.current_status().await == Status::ShuttingDown {
                 break;
             }
             warn!(

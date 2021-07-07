@@ -7,7 +7,7 @@ config_file! { HostapdConfigurationTemplate("hostapd.conf.hbs") => "/data/hostap
 #[derive(Debug, Clone)]
 pub struct HostapdService {
     process: Arc<ProcessManager<HostapdMeta>>,
-    config: VagabondConfig,
+    state_manager: StateManager,
 }
 
 #[derive(Debug, Clone)]
@@ -23,15 +23,15 @@ impl ProcessService for HostapdMeta {
 }
 
 impl HostapdService {
-    pub async fn new(config: VagabondConfig) -> Result<Self> {
+    pub async fn new(state_manager: StateManager) -> Result<Self> {
         Ok(Self {
-            process: Arc::new(ProcessManager::new(HostapdMeta).await?),
-            config,
+            state_manager: state_manager.clone(),
+            process: Arc::new(ProcessManager::new(HostapdMeta, state_manager).await?),
         })
     }
 
     pub async fn spawn(&self) -> Result<()> {
-        if self.config.dns.enabled {
+        if self.state_manager.config.dns.enabled {
             // HostapdConfigurationTemplate::write(self.config.clone()).await?;
             self.process.clone().spawn().await?;
         } else {

@@ -16,6 +16,7 @@ pub trait ProcessService: Clone + Sync + Send + Sized {
 #[derive(Debug, Clone)]
 pub struct ProcessManager<P: ProcessService> {
     status: Arc<RwLock<ServiceStatus>>,
+    state_manager: StateManager,
     meta: P,
 }
 
@@ -27,6 +28,10 @@ impl<P: ProcessService> Service for ProcessManager<P> {
 
     fn restart_time(&self) -> u64 {
         P::RESTART_TIME
+    }
+
+    async fn state_manager(&self) -> StateManager {
+        self.state_manager.clone()
     }
 
     async fn start(&self) -> Result<()> {
@@ -63,9 +68,9 @@ impl<P: ProcessService> Service for ProcessManager<P> {
 }
 
 impl<P: ProcessService> ProcessManager<P> {
-    pub async fn new(meta: P) -> Result<Self> {
+    pub async fn new(meta: P, state_manager: StateManager) -> Result<Self> {
         Ok(Self {
-            meta,
+            meta, state_manager,
             status: Arc::new(RwLock::new(ServiceStatus::Stopped)),
         })
     }

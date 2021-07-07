@@ -16,4 +16,4 @@ pub use iwd::IwdManager;
 pub use process::*;
 pub use service_trait::*;
 
-use crate::VagabondConfig;
+use crate::StateManager;

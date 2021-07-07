@@ -7,7 +7,7 @@ config_file! { DhcpConfigTemplate("dhcpd.conf.hbs") => "/etc/dhcp/dhcpd.conf" }
 #[derive(Debug, Clone)]
 pub struct DhcpService {
     process: Arc<ProcessManager<DhcpMeta>>,
-    config: VagabondConfig,
+    state_manager: StateManager,
 }
 
 #[derive(Debug, Clone)]
@@ -26,15 +26,15 @@ impl ProcessService for DhcpMeta {
 }
 
 impl DhcpService {
-    pub async fn new(config: VagabondConfig) -> Result<Self> {
+    pub async fn new(state_manager: StateManager) -> Result<Self> {
         Ok(Self {
-            process: Arc::new(ProcessManager::new(DhcpMeta).await?),
-            config,
+            state_manager: state_manager.clone(),
+            process: Arc::new(ProcessManager::new(DhcpMeta, state_manager).await?),
         })
     }
 
     pub async fn spawn(&self) -> Result<()> {
-        if self.config.dhcp.enabled {
+        if self.state_manager.config.dhcp.enabled {
             // DhcpConfigTemplate::write(self.config.clone()).await?;
             self.process.clone().spawn().await?;
         } else {
