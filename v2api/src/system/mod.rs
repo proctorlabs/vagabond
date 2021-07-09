@@ -5,6 +5,7 @@ use std::sync::Arc;
 use tokio::task::spawn_blocking;
 
 mod ctls;
+mod interfaces;
 mod routing;
 
 #[derive(Debug)]
@@ -18,6 +19,7 @@ pub struct SystemManager(Arc<SystemInfo>);
 
 impl SystemManager {
     pub fn new(config: &VagabondConfig) -> Self {
+        interfaces::get_interfaces().unwrap();
         let is_root = unistd::geteuid().is_root();
         if !is_root {
             warn!(

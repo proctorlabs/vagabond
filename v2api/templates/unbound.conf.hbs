@@ -35,7 +35,7 @@ server:
 
 {{{ self.dns.unbound_options }}}
 
-include: /etc/unbound/unbound-blocklist.conf
+# include: /etc/unbound/unbound-blocklist.conf
 
 forward-zone:
     name: "."{{#each self.dns.servers }}

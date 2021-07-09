@@ -1,7 +1,9 @@
 use super::*;
+use crate::app::Vagabond;
+use crate::services::http::websockets::WebsocketTxMessage;
 use anyhow::Result;
 use async_trait::async_trait;
-use futures::StreamExt;
+use futures::{SinkExt, StreamExt};
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use warp::Filter;
@@ -23,9 +25,11 @@ impl HttpServer {
         })
     }
 
-    fn handle_websocket(ws: warp::ws::Ws) -> impl warp::Reply {
+    // async fn websocket_message_handler() {}
+
+    fn handle_websocket(ws: warp::ws::Ws, app: Vagabond) -> impl warp::Reply {
         ws.on_upgrade(|websocket| {
-            let (_tx, mut rx) = websocket.split();
+            let (mut tx, mut rx) = websocket.split();
             async move {
                 info!("Websocket connected");
                 loop {
@@ -34,10 +38,18 @@ impl HttpServer {
                             if let Ok(txt) = m.to_str() {
                                 let r = serde_json::from_str::<WebsocketRxMessage>(txt);
                                 if let Ok(parsed) = r {
-                                    let r = parsed.dispatch().await;
+                                    let r = parsed.dispatch(&app).await;
                                     if let Err(e) = r {
-                                        warn!("Error dispatching websocket message!");
-                                        warn!("{}", e);
+                                        let txmsg: String = serde_json::to_string(
+                                            &WebsocketTxMessage::Error(format!("{}", e)),
+                                        )
+                                        .unwrap_or_else(|e| {
+                                            format!("{}{:?}\"}}", r#"{"type":"error","data":""#, e)
+                                        });
+                                        let msg = warp::ws::Message::text(txmsg);
+                                        if let Err(e) = tx.send(msg).await {
+                                            warn!("Could not send websocket reply! {:?}", e);
+                                        }
                                     }
                                 } else {
                                     warn!("Failed to parse websocket message! {:?}", r);
@@ -72,6 +84,8 @@ impl Service for HttpServer {
     }
 
     async fn start(&self) -> Result<()> {
+        let app = self.state_manager.vagabond().await?;
+        let app = warp::any().map(move || app.clone());
         let content = warp::get().and(warp::fs::dir("./static/"));
 
         let alternate_index = warp::get().and(
@@ -82,6 +96,7 @@ impl Service for HttpServer {
 
         let ws = warp::path!("api" / "sock")
             .and(warp::ws())
+            .and(app.clone())
             .map(Self::handle_websocket);
 
         let routes = ws.or(content).or(alternate_index);

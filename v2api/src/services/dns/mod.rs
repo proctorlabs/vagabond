@@ -14,11 +14,11 @@ pub struct DnsService {
 pub struct DnsMeta;
 impl ProcessService for DnsMeta {
     const SERVICE_NAME: &'static str = "DNS";
-    const COMMAND: &'static str = "bash";
+    const COMMAND: &'static str = "unbound";
     const RESTART_TIME: u64 = 8;
 
     fn get_args(&self) -> &[&str] {
-        &["-c", "echo 'Hey!' && sleep 5 && echo 'yo!' && sleep 2"]
+        &["-d", "-p", "-c", UnboundConfigTemplate::FILE_PATH]
     }
 }
 
@@ -32,7 +32,7 @@ impl DnsService {
 
     pub async fn spawn(&self) -> Result<()> {
         if self.state_manager.config.dns.enabled {
-            // UnboundConfigTemplate::write(self.config.clone()).await?;
+            UnboundConfigTemplate::write(self.state_manager.config.clone()).await?;
             self.process.clone().spawn().await?;
         } else {
             info!("DNS service is disabled");

@@ -34,7 +34,7 @@ pub async fn main() -> Result<()> {
         .set_palette("196;208;31;8;59".into())
         .start()?;
     let config = VagabondConfig::from_file(args.config).await?;
-    let mut vagabond = app::Vagabond::new(config).await?;
+    let vagabond = app::Vagabond::new(config).await?;
     match vagabond.start().await {
         Ok(_) => {}
         Err(e) => {

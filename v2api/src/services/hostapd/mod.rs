@@ -14,11 +14,11 @@ pub struct HostapdService {
 pub struct HostapdMeta;
 impl ProcessService for HostapdMeta {
     const SERVICE_NAME: &'static str = "hostapd";
-    const COMMAND: &'static str = "bash";
+    const COMMAND: &'static str = "hostapd";
     const RESTART_TIME: u64 = 8;
 
     fn get_args(&self) -> &[&str] {
-        &["-c", "echo 'Hey!' && sleep 5 && echo 'yo!' && sleep 2"]
+        &[HostapdConfigurationTemplate::FILE_PATH]
     }
 }
 
@@ -31,8 +31,8 @@ impl HostapdService {
     }
 
     pub async fn spawn(&self) -> Result<()> {
-        if self.state_manager.config.dns.enabled {
-            // HostapdConfigurationTemplate::write(self.config.clone()).await?;
+        if self.state_manager.config.network.wlan.enabled {
+            HostapdConfigurationTemplate::write(self.state_manager.config.clone()).await?;
             self.process.clone().spawn().await?;
         } else {
             info!("DNS service is disabled");

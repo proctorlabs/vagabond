@@ -3,6 +3,7 @@ mod dbus_objects;
 
 use super::*;
 use anyhow::Result;
+use async_trait::async_trait;
 use dbus::{
     nonblock::{Proxy, SyncConnection},
     Path,
@@ -24,7 +25,39 @@ enum DbusState {
 #[derive(Clone)]
 pub struct IwdManager {
     dbus_state: Arc<RwLock<DbusState>>,
+    dbus_process: Arc<ProcessManager<DbusMeta>>,
+    iwd_process: Arc<ProcessManager<IwdMeta>>,
     state_manager: StateManager,
+}
+
+#[derive(Debug, Clone)]
+pub struct DbusMeta;
+impl ProcessService for DbusMeta {
+    const SERVICE_NAME: &'static str = "dbus";
+    const COMMAND: &'static str = "dbus-daemon";
+    const RESTART_TIME: u64 = 30;
+
+    fn get_args(&self) -> &[&str] {
+        &[
+            "--system",
+            "--nofork",
+            "--nopidfile",
+            "--nosyslog",
+            "--print-address",
+        ]
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct IwdMeta;
+impl ProcessService for IwdMeta {
+    const SERVICE_NAME: &'static str = "iwd";
+    const COMMAND: &'static str = "/usr/libexec/iwd";
+    const RESTART_TIME: u64 = 8;
+
+    fn get_args(&self) -> &[&str] {
+        &[]
+    }
 }
 
 impl std::fmt::Debug for IwdManager {
@@ -37,6 +70,8 @@ impl IwdManager {
     pub async fn new(state_manager: StateManager) -> Result<Self> {
         Ok(IwdManager {
             dbus_state: Arc::new(RwLock::new(DbusState::Stopped)),
+            dbus_process: Arc::new(ProcessManager::new(DbusMeta, state_manager.clone()).await?),
+            iwd_process: Arc::new(ProcessManager::new(IwdMeta, state_manager.clone()).await?),
             state_manager,
         })
     }
@@ -63,29 +98,13 @@ impl IwdManager {
         ))
     }
 
-    pub async fn spawn(&self) -> Result<()> {
-        if !self.dbus_state.read().await.is_connected() {
-            info!("Connecting to iwd via dbus...");
-            let (resource, conn) = spawn_blocking(|| connection::new_system_sync()).await??;
-            *self.dbus_state.write().await = DbusState::Connected(conn.clone());
-            let state_manager = self.state_manager.clone();
-            let zelf = self.clone();
-            tokio::spawn(async move {
-                let mut resource = resource;
-                while state_manager.current_status().await != crate::Status::ShuttingDown {
-                    let err = resource.await;
-                    warn!("Lost connection to D-Bus: {}", err);
-                    *zelf.dbus_state.write().await = DbusState::Failed(err.to_string());
-                    tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
-                    info!("Attempting to reconnect to dbus...");
-                    let (new_resource, new_conn) =
-                        spawn_blocking(|| connection::new_system_sync()).await??;
-                    *zelf.dbus_state.write().await = DbusState::Connected(new_conn.clone());
-                    resource = new_resource;
-                }
-                Ok::<(), anyhow::Error>(())
-            });
-        }
+    pub async fn spawn_dbus(&self) -> Result<()> {
+        self.dbus_process.clone().spawn().await?;
+        Ok(())
+    }
+
+    pub async fn spawn_iwd(&self) -> Result<()> {
+        self.iwd_process.clone().spawn().await?;
         Ok(())
     }
 
@@ -109,6 +128,47 @@ impl IwdManager {
                     warn!("Unknown object with properties {:?} at path {}", vals, path);
                 }
             };
+        }
+        Ok(())
+    }
+}
+
+#[async_trait]
+impl Service for IwdManager {
+    fn name(&self) -> &'static str {
+        "IWD Monitor"
+    }
+
+    fn restart_time(&self) -> u64 {
+        10
+    }
+
+    async fn state_manager(&self) -> StateManager {
+        self.state_manager.clone()
+    }
+
+    async fn start(&self) -> Result<()> {
+        if !self.dbus_state.read().await.is_connected() {
+            info!("Connecting to iwd via dbus...");
+            let (resource, conn) = spawn_blocking(|| connection::new_system_sync()).await??;
+            *self.dbus_state.write().await = DbusState::Connected(conn.clone());
+            let state_manager = self.state_manager.clone();
+            let zelf = self.clone();
+            // tokio::spawn(async move {
+            let mut resource = resource;
+            while state_manager.current_status().await != crate::Status::ShuttingDown {
+                let err = resource.await;
+                warn!("Lost connection to D-Bus: {}", err);
+                *zelf.dbus_state.write().await = DbusState::Failed(err.to_string());
+                tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
+                info!("Attempting to reconnect to dbus...");
+                let (new_resource, new_conn) =
+                    spawn_blocking(|| connection::new_system_sync()).await??;
+                *zelf.dbus_state.write().await = DbusState::Connected(new_conn.clone());
+                resource = new_resource;
+            }
+            //     Ok::<(), anyhow::Error>(())
+            // });
         }
         Ok(())
     }

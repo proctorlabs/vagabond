@@ -1,6 +1,9 @@
 use super::*;
 use anyhow::Result;
+use std::fs::OpenOptions;
 use std::sync::Arc;
+
+const DHCPD_LEASE_DB: &'static str = "/var/lib/dhcp/dhcpd.leases";
 
 config_file! { DhcpConfigTemplate("dhcpd.conf.hbs") => "/etc/dhcp/dhcpd.conf" }
 
@@ -14,13 +17,17 @@ pub struct DhcpService {
 pub struct DhcpMeta;
 impl ProcessService for DhcpMeta {
     const SERVICE_NAME: &'static str = "DHCP";
-    const COMMAND: &'static str = "bash";
+    const COMMAND: &'static str = "dhcpd";
     const RESTART_TIME: u64 = 8;
 
     fn get_args(&self) -> &[&str] {
         &[
-            "-c",
-            "echo 'Hi from dhcp!!' && sleep 5 && echo 'yo!' && sleep 2",
+            "-cf",
+            DhcpConfigTemplate::FILE_PATH,
+            "-lf",
+            DHCPD_LEASE_DB,
+            "-f",
+            "--no-pid",
         ]
     }
 }
@@ -35,7 +42,13 @@ impl DhcpService {
 
     pub async fn spawn(&self) -> Result<()> {
         if self.state_manager.config.dhcp.enabled {
-            // DhcpConfigTemplate::write(self.config.clone()).await?;
+            DhcpConfigTemplate::write(self.state_manager.config.clone()).await?;
+            OpenOptions::new()
+                .create_new(true)
+                .write(true)
+                .open(DHCPD_LEASE_DB)
+                .map(|_| "")
+                .unwrap_or_default();
             self.process.clone().spawn().await?;
         } else {
             info!("DHCP service is disabled");

@@ -1,3 +1,4 @@
+use crate::app::Vagabond;
 use anyhow::Result;
 use std::collections::HashMap;
 
@@ -18,8 +19,11 @@ pub enum WebsocketRxMessage {
 }
 
 impl WebsocketRxMessage {
-    pub async fn dispatch(&self) -> Result<()> {
+    pub async fn dispatch(&self, app: &Vagabond) -> Result<()> {
         match self {
+            &WebsocketRxMessage::WifiScan => {
+                app.iwd.run_test().await?;
+            }
             m => {
                 info!("No handler for {:?}", m);
             }
@@ -46,7 +50,12 @@ pub enum WebsocketTxMessage {
     },
     Interfaces(InterfaceMessage),
     WifiStatus(Vec<WifiNetwork>),
+    Error(String),
 }
+
+// "type": self.interface_type,
+// "running": self._running,
+// "interface": self._ip_addr,
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(

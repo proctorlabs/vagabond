@@ -35,9 +35,9 @@ pub fn setup_routes(cfg: &VagabondConfig) -> Result<(), ErrorString> {
 
 fn setup_filters(ipt: &IPTables, cfg: &VagabondConfig) -> Result<(), ErrorString> {
     // POLICIES
-    ipt.set_policy(FILTER, INPUT, DROP)?;
-    ipt.set_policy(FILTER, OUTPUT, ACCEPT)?;
-    ipt.set_policy(FILTER, FORWARD, ACCEPT)?;
+    ipt.set_policy(FILTER, INPUT, DROP).unwrap_or_default();
+    ipt.set_policy(FILTER, OUTPUT, ACCEPT).unwrap_or_default();
+    ipt.set_policy(FILTER, FORWARD, ACCEPT).unwrap_or_default();
 
     // LINK OUR CHAINS
     for (oldchain, newchain) in [
@@ -47,7 +47,7 @@ fn setup_filters(ipt: &IPTables, cfg: &VagabondConfig) -> Result<(), ErrorString
     ] {
         ipt.new_chain(FILTER, &newchain).unwrap_or_default();
         ipt.flush_chain(FILTER, &newchain).unwrap_or_default();
-        ipt.append_unique(FILTER, &oldchain, &format!("-j {}", newchain))?;
+        ipt.append_unique(FILTER, &oldchain, &format!("-j {}", newchain)).unwrap_or_default();
     }
 
     // SETUP SOME GLOBAL RULES
@@ -100,7 +100,7 @@ fn setup_nat(ipt: &IPTables, cfg: &VagabondConfig) -> Result<(), ErrorString> {
     ] {
         ipt.new_chain(NAT, &newchain).unwrap_or_default();
         ipt.flush_chain(NAT, &newchain).unwrap_or_default();
-        ipt.append_unique(NAT, &oldchain, &format!("-j {}", newchain))?;
+        ipt.append_unique(NAT, &oldchain, &format!("-j {}", newchain)).unwrap_or_default();
     }
 
     for iface in cfg.external_interfaces() {
@@ -124,7 +124,7 @@ fn setup_nat(ipt: &IPTables, cfg: &VagabondConfig) -> Result<(), ErrorString> {
 #[derive(Display, Debug)]
 pub struct ErrorString(String);
 impl From<Box<dyn std::error::Error>> for ErrorString {
-    fn from(_: Box<dyn std::error::Error>) -> Self {
-        todo!()
+    fn from(e: Box<dyn std::error::Error>) -> Self {
+        ErrorString(format!("{:?}", e))
     }
 }
