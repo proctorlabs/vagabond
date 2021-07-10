@@ -10,8 +10,7 @@ RUN mkdir /build && cd /build && \
 WORKDIR /build/connman
 
 RUN DEBIAN_FRONTEND=noninteractive apt-get install -y libreadline-dev libglib2.0-0 libglib2.0-dev libxtables-dev libmnl-dev libgnutls28-dev libgnutls30 libnftnl-dev
-RUN ./bootstrap && \
-    ./configure \
+RUN ./bootstrap && ./configure \
     --prefix=/usr \
     --localstatedir=/var \
     --sysconfdir=/etc \

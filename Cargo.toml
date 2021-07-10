@@ -1,2 +1,2 @@
 [workspace]
-members = ["v2api"]
+members = ["api"]

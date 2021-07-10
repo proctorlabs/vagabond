@@ -9,4 +9,4 @@ docker run --rm -it \
     -v $PWD:/app \
     -v $PWD/.tmp/target:/app/target \
     -w /app --privileged --net host \
-    $(docker build -q v2api/) cargo run -- -c dev.toml -l debug
+    $(docker build -q api/) cargo run -- -c dev.toml -l debug
