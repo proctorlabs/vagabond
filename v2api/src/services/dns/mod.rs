@@ -1,4 +1,5 @@
 use super::*;
+use crate::data::ServiceStatus;
 use anyhow::Result;
 use std::sync::Arc;
 
@@ -27,6 +28,14 @@ impl DnsService {
         Ok(Self {
             state_manager: state_manager.clone(),
             process: Arc::new(ProcessManager::new(DnsMeta, state_manager).await?),
+        })
+    }
+
+    pub async fn status(&self) -> Result<ServiceStatus> {
+        Ok(ServiceStatus {
+            enabled: self.state_manager.config.dns.enabled,
+            state: self.process.current_state().await?,
+            detail: Default::default(),
         })
     }
 

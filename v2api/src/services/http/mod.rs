@@ -1,15 +1,13 @@
 use super::*;
-use crate::app::Vagabond;
-use crate::services::http::websockets::WebsocketTxMessage;
+use crate::{app::Vagabond, data::*};
 use anyhow::Result;
 use async_trait::async_trait;
 use futures::{SinkExt, StreamExt};
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use warp::Filter;
-use websockets::WebsocketRxMessage;
 
-mod websockets;
+mod dispatcher;
 
 #[derive(Debug, Clone)]
 pub struct HttpServer {
@@ -25,8 +23,6 @@ impl HttpServer {
         })
     }
 
-    // async fn websocket_message_handler() {}
-
     fn handle_websocket(ws: warp::ws::Ws, app: Vagabond) -> impl warp::Reply {
         ws.on_upgrade(|websocket| {
             let (mut tx, mut rx) = websocket.split();
@@ -38,7 +34,7 @@ impl HttpServer {
                             if let Ok(txt) = m.to_str() {
                                 let r = serde_json::from_str::<WebsocketRxMessage>(txt);
                                 if let Ok(parsed) = r {
-                                    let r = parsed.dispatch(&app).await;
+                                    let r = parsed.dispatch(&app, &mut tx).await;
                                     if let Err(e) = r {
                                         let txmsg: String = serde_json::to_string(
                                             &WebsocketTxMessage::Error(format!("{}", e)),

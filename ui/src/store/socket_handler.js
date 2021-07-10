@@ -9,7 +9,7 @@ export default {
       state.services = data
     }
   },
-  wifi_scan_result_handler: function (data, state) {
+  wifi_scan_handler: function (data, state) {
     if (data) {
       state.wifiScan = data
     }

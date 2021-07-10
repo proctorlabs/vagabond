@@ -1,3 +1,5 @@
+use crate::data::ServiceState;
+
 use super::*;
 use anyhow::Result;
 use async_trait::async_trait;
@@ -15,7 +17,7 @@ pub trait ProcessService: Clone + Sync + Send + Sized {
 
 #[derive(Debug, Clone)]
 pub struct ProcessManager<P: ProcessService> {
-    status: Arc<RwLock<ServiceStatus>>,
+    status: Arc<RwLock<ServiceState>>,
     state_manager: StateManager,
     meta: P,
 }
@@ -37,13 +39,13 @@ impl<P: ProcessService> Service for ProcessManager<P> {
     async fn start(&self) -> Result<()> {
         {
             let mut status = self.status.write().await;
-            if *status == ServiceStatus::Running {
+            if *status == ServiceState::Running {
                 return Err(anyhow::anyhow!(format!(
                     "{} service is already running!",
                     P::COMMAND
                 )));
             }
-            *status = ServiceStatus::Running;
+            *status = ServiceState::Running;
         }
 
         let mut cmd_process = tokio::process::Command::new(P::COMMAND)
@@ -70,14 +72,19 @@ impl<P: ProcessService> Service for ProcessManager<P> {
 impl<P: ProcessService> ProcessManager<P> {
     pub async fn new(meta: P, state_manager: StateManager) -> Result<Self> {
         Ok(Self {
-            meta, state_manager,
-            status: Arc::new(RwLock::new(ServiceStatus::Stopped)),
+            meta,
+            state_manager,
+            status: Arc::new(RwLock::new(ServiceState::Stopped)),
         })
+    }
+
+    pub async fn current_state(&self) -> Result<ServiceState> {
+        Ok(*self.status.read().await)
     }
 
     async fn watch_process(self, mut cmd_process: Child) -> Result<()> {
         let exit_status = cmd_process.wait().await?;
-        *self.status.write().await = ServiceStatus::Failed;
+        *self.status.write().await = ServiceState::Failed;
         // This sleep gives a little time for buffers to clear
         tokio::time::sleep(tokio::time::Duration::from_millis(300)).await;
         Err::<(), anyhow::Error>(anyhow::anyhow!(format!(
@@ -92,7 +99,7 @@ impl<P: ProcessService> ProcessManager<P> {
         loop {
             match bus.recv().await? {
                 crate::bus::Event::Shutdown => {
-                    *self.status.write().await = ServiceStatus::Stopped;
+                    *self.status.write().await = ServiceState::Stopped;
                     return Err::<(), anyhow::Error>(anyhow::anyhow!(format!(
                         "Aborting {} due to shutdown signal",
                         P::SERVICE_NAME

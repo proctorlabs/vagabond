@@ -13,28 +13,51 @@
         <v-simple-table dense>
           <tbody>
             <tr>
-              <td class="text-right"><h4>interface</h4></td>
+              <td class="text-right"><h4>Interface</h4></td>
               <td class="text-left">{{ status.name }}</td>
             </tr>
             <tr>
+              <td class="text-right"><h4>Connected Network</h4></td>
+              <td class="text-left" v-if="status.state == 'connected'">{{ status.connected_network.ssid }}</td>
+              <td class="text-left" v-else> N/A </td>
+            </tr>
+            <tr>
+              <td class="text-right"><h4>PHY</h4></td>
+              <td class="text-left">{{ status.phy }}</td>
+            </tr>
+            <tr>
+              <td class="text-right"><h4>Vendor</h4></td>
+              <td class="text-left">{{ status.vendor }}</td>
+            </tr>
+            <tr>
+              <td class="text-right"><h4>Model</h4></td>
+              <td class="text-left">{{ status.model }}</td>
+            </tr>
+            <tr>
               <td class="text-right"><h4>MAC Address</h4></td>
-              <td class="text-left">{{ status.address }}</td>
+              <td class="text-left">{{ status.address.toUpperCase() }}</td>
             </tr>
             <tr>
               <td class="text-right"><h4>Current State</h4></td>
-              <td class="text-left">{{ status.state }}</td>
+              <td class="text-left">{{ titleize(status.state) }}</td>
             </tr>
             <tr>
               <td class="text-right"><h4>Current Mode</h4></td>
-              <td class="text-left">{{ status.mode }}</td>
+              <td class="text-left">{{ formatMode(status.mode) }}</td>
             </tr>
-            <tr v-if="status.state == 'connected'">
-              <td class="text-right"><h4>Connected SSID</h4></td>
-              <td class="text-left">{{ status.ssid }}</td>
+            <tr>
+              <td class="text-right"><h4>Device Powered</h4></td>
+              <td class="text-left">{{ status.powered ? 'yes' : 'no' }}</td>
             </tr>
-            <tr v-if="status.ip">
-              <td class="text-right"><h4>IP Address</h4></td>
-              <td class="text-left">{{ status.ip }}</td>
+            <tr>
+              <td class="text-right"><h4>Scanning...</h4></td>
+              <td class="text-left">{{ status.scanning ? 'yes' : 'no' }}</td>
+            </tr>
+            <tr>
+              <td class="text-right"><h4>Supported Modes</h4></td>
+              <td class="text-left">
+                {{ formatModes(status.supported_modes) }}
+              </td>
             </tr>
           </tbody>
         </v-simple-table>
@@ -98,6 +121,32 @@ export default {
   name: 'Wifi',
   methods: {
     ...mapActions(['wifiScan', 'wifiStatus', 'wifiDisconnect']),
+    formatMode: function(mode) {
+      switch (mode) {
+        case 'ad_hoc':
+          return 'Ad-Hoc'
+        case 'station':
+          return 'Station'
+        case 'access_point':
+          return 'Access Point'
+        default:
+          return mode
+      }
+    },
+    formatModes: function(modes) {
+      var result = []
+      modes.forEach((mode) => {
+        result.push(this.formatMode(mode))
+      })
+      return result.join(', ')
+    },
+    titleize: function(name) {
+      var string_array = name.split(' ')
+      string_array = string_array.map(function(str) {
+        return str.charAt(0).toUpperCase() + str.slice(1);
+      })
+      return string_array.join(' ')
+    },
     securityIcon: function(icon) {
       switch (icon) {
         case 'psk':

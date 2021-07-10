@@ -1,4 +1,5 @@
 <node>
+
     <interface name="org.freedesktop.DBus.ObjectManager">
         <method name="GetManagedObjects">
             <arg name="objpath_interfaces_and_properties" type="a{oa{sa{sv}}}" direction="out" />
@@ -143,4 +144,5 @@
         <property name="Type" type="s" access="read" />
         <property name="KnownNetwork" type="o" access="read" />
     </interface>
+
 </node>

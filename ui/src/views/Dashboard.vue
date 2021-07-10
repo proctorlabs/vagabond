@@ -18,7 +18,7 @@
                   Interface
                 </th>
                 <th class="text-left">
-                  MAC
+                  Up
                 </th>
                 <th class="text-left">
                   Local Addresses
@@ -27,14 +27,29 @@
             </thead>
 
             <tbody>
-              <tr v-for="item in interfaces" :key="item.ifname">
+              <tr v-for="item in interfaces" :key="item.name">
                 <td>
-                  {{ item.ifname }}
+                  {{ item.name }}
                 </td>
-                <td>{{ item.address }}</td>
+                <td>{{ item.up }}</td>
                 <td>
-                  <span v-for="addr in item.addr_info" :key="addr.local"
-                    >{{ addr.local }} |
+                  <span
+                    v-for="(addr, key, index) in item.addresses"
+                    :key="addr.local"
+                  >
+                    <span v-if="addr.type == 'Mac'">
+                      Mac: {{ formatMac(addr.address) }}
+                    </span>
+                    <span v-else-if="addr.type == 'Ipv4'"
+                      >IP4: {{ addr.address }}</span
+                    >
+                    <span v-else-if="addr.type == 'Ipv6'"
+                      >IP6: {{ addr.address }}</span
+                    >
+                    <span v-else>{{ addr.type }}: {{ addr.address }}</span>
+                    <br
+                      v-if="index != Object.keys(item.addresses).length - 1"
+                    />
                   </span>
                 </td>
               </tr>
@@ -49,17 +64,9 @@
         <v-simple-table dense>
           <template v-slot:default>
             <tbody>
-              <tr>
-                <td>hostapd</td>
-                <td>{{ services.hostapd.running ? 'running' : 'stopped' }}</td>
-              </tr>
-              <tr>
-                <td>dhcpd:</td>
-                <td>{{ services.dhcpd.running ? 'running' : 'stopped' }}</td>
-              </tr>
-              <tr>
-                <td>unbound</td>
-                <td>{{ services.unbound.running ? 'running' : 'stopped' }}</td>
+              <tr v-for="(service, name) in services" :key="name">
+                <td>{{ name }}</td>
+                <td>{{ service.state }}</td>
               </tr>
             </tbody>
           </template>
@@ -77,6 +84,17 @@ export default {
   name: 'Dashboard',
   methods: {
     ...mapActions(['getStatus', 'listInterfaces']),
+    formatMac: function(mac) {
+      var result = []
+      mac.forEach((u8) => {
+        var unit = u8.toString(16).toUpperCase()
+        if (unit.length < 2) {
+          unit = '0' + unit
+        }
+        result.push(unit)
+      })
+      return result.join(':')
+    },
   },
   computed: {
     ...mapGetters({ interfaces: 'interfaces', services: 'services' }),

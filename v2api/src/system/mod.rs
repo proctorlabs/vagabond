@@ -1,4 +1,4 @@
-use crate::config::VagabondConfig;
+use crate::{config::VagabondConfig, data::Interfaces};
 use anyhow::{anyhow, Result};
 use nix::unistd;
 use std::sync::Arc;
@@ -19,7 +19,6 @@ pub struct SystemManager(Arc<SystemInfo>);
 
 impl SystemManager {
     pub fn new(config: &VagabondConfig) -> Self {
-        interfaces::get_interfaces().unwrap();
         let is_root = unistd::geteuid().is_root();
         if !is_root {
             warn!(
@@ -30,6 +29,10 @@ impl SystemManager {
             config: config.clone(),
             is_root,
         }))
+    }
+
+    pub fn get_interfaces(&self) -> Result<Interfaces> {
+        interfaces::get_interfaces()
     }
 
     pub fn setup_sysctl(&self) -> Result<()> {

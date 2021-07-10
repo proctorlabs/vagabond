@@ -17,9 +17,11 @@ mod app;
 mod args;
 mod bus;
 mod config;
+mod data;
 mod services;
 mod state;
 mod system;
+mod util;
 
 use anyhow::Result;
 use config::VagabondConfig;

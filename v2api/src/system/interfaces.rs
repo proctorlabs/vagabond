@@ -1,3 +1,4 @@
+use crate::data::*;
 use anyhow::Result;
 use ipnet::{Ipv4Net, Ipv6Net};
 use nix::sys::socket::InetAddr;
@@ -5,22 +6,8 @@ use nix::{ifaddrs, net::if_::InterfaceFlags, sys::socket::SockAddr};
 use std::collections::HashMap;
 use std::net::{Ipv4Addr, Ipv6Addr};
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Interface {
-    name: String,
-    up: bool,
-    addresses: Vec<InterfaceAddress>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, IsVariant, PartialEq, PartialOrd, Eq, Ord)]
-pub enum InterfaceAddress {
-    Ipv4 { address: Ipv4Addr, subnet: Ipv4Net },
-    Ipv6 { address: Ipv6Addr, subnet: Ipv6Net },
-    Mac { address: [u8; 6] },
-}
-
-pub fn get_interfaces() -> Result<HashMap<String, Interface>> {
-    let mut result: HashMap<String, Interface> = HashMap::new();
+pub fn get_interfaces() -> Result<Interfaces> {
+    let mut result: Interfaces = HashMap::new();
     for iface in ifaddrs::getifaddrs()?.into_iter() {
         if !result.contains_key(&iface.interface_name) {
             result.insert(

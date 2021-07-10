@@ -1,5 +1,6 @@
 use super::*;
 use anyhow::Result;
+use async_trait::async_trait;
 use dbus::{
     arg::{PropMap, RefArg, Variant},
     nonblock::Proxy,
@@ -7,10 +8,19 @@ use dbus::{
 };
 use std::collections::HashMap;
 
+#[async_trait]
+pub trait DbusObject<'a> {
+    const DBUS_OBJECT_NAME: &'static str;
+    fn new<T: Into<Path<'a>>>(manager: IwdManager, path: T) -> Self;
+    async fn fetch_properties(&mut self) -> Result<()>;
+}
+
 macro_rules! dbus_object {
     ($( $traitpath:path => $objname:literal : $name:ident
         <properties> { $( $varname:ident : $vartype:ty ),* }
         <methods> { $( $methodname:ident ($($argname:ident : $argtype:ty),*) -> $returntype:ty ),* }
+        <links> { $( $linkname:ident => $linktype:ident ),* }
+        <into> { $( $intoname:ident => $intotype:ident ),* }
     )* ) => {
         $(
             #[allow(dead_code)]
@@ -22,11 +32,11 @@ macro_rules! dbus_object {
                 $( pub $varname: Option<$vartype> , )*
             }
 
-            #[allow(dead_code)]
-            impl<'a> $name<'a> {
-                pub const DBUS_OBJECT_NAME: &'static str = $objname;
+            #[async_trait]
+            impl<'a> DbusObject<'a> for $name<'a> {
+                const DBUS_OBJECT_NAME: &'static str = $objname;
 
-                pub fn new<T: Into<Path<'a>>>(manager: IwdManager, path: T) -> Self {
+                fn new<T: Into<Path<'a>>>(manager: IwdManager, path: T) -> Self {
                     Self {
                         manager,
                         path: path.into(),
@@ -35,7 +45,7 @@ macro_rules! dbus_object {
                     }
                 }
 
-                pub async fn fetch_properties(&mut self) -> Result<()> {
+                async fn fetch_properties(&mut self) -> Result<()> {
                     if !self.populated {
                         #[allow(unused_variables)]
                         let proxy_object = self.manager.get_proxy(self.path.clone()).await?;
@@ -46,11 +56,29 @@ macro_rules! dbus_object {
                     }
                     Ok(())
                 }
+            }
 
+            #[allow(dead_code)]
+            impl<'a> $name<'a> {
                 $(
                     pub async fn $methodname(&self, $( $argname : $argtype ,)*) -> Result<$returntype> {
                         let proxy_object = self.manager.get_proxy(self.path.clone()).await?;
                         Ok(<Proxy<_> as $traitpath>::$methodname(&proxy_object, $( $argname ,)*).await?)
+                    }
+                )*
+
+                $(
+                    pub async fn $linkname(&self) -> Result<$linktype<'a>> {
+                        let proxy_object = self.manager.get_proxy(self.path.clone()).await?;
+                        let path = <Proxy<_> as $traitpath>::$linkname(&proxy_object).await?;
+                        let dest_object = $linktype::new(self.manager.clone(), path.clone());
+                        Ok(dest_object)
+                    }
+                )*
+
+                $(
+                    pub async fn $intoname(&self) -> Result<$intotype<'a>> {
+                        Ok($intotype::new(self.manager.clone(), self.path.clone()))
                     }
                 )*
             }
@@ -70,6 +98,11 @@ dbus_object! {
     <methods> {
         connect() -> ()
     }
+    <links> {
+        device => Device,
+        known_network => Network
+    }
+    <into> {}
 
     dbus_iwd::Station => "net.connman.iwd.Station" : Station
     <properties> {
@@ -86,6 +119,13 @@ dbus_object! {
         unregister_signal_level_agent(path: Path<'static>) -> (),
         register_signal_level_agent(path: Path<'static>, levels: Vec<i16>) -> ()
     }
+    <links> {
+        connected_network => Network
+    }
+    <into> {
+        device => Device,
+        simple_configuration => SimpleConfiguration
+    }
 
     dbus_iwd::Device => "net.connman.iwd.Device" : Device
     <properties> {
@@ -98,6 +138,13 @@ dbus_object! {
     <methods> {
         set_powered(val: bool) -> (),
         set_mode(mode: String) -> ()
+    }
+    <links> {
+        adapter => Adapter
+    }
+    <into> {
+        station => Station,
+        simple_configuration => SimpleConfiguration
     }
 
     dbus_iwd::P2pDevice => "net.connman.iwd.p2p.Device" : P2pDevice
@@ -113,6 +160,10 @@ dbus_object! {
         set_enabled(val: bool) -> (),
         set_name(val: String) -> ()
     }
+    <links> {}
+    <into> {
+        adapter => Adapter
+    }
 
     dbus_iwd::Adapter => "net.connman.iwd.Adapter" : Adapter
     <properties> {
@@ -125,6 +176,10 @@ dbus_object! {
     <methods> {
         set_powered(val: bool) -> ()
     }
+    <links> {}
+    <into> {
+        p2p_device => P2pDevice
+    }
 
     dbus_iwd::P2pServiceManager => "net.connman.iwd.p2p.ServiceManager" : P2pServiceManager
     <properties> {}
@@ -132,6 +187,8 @@ dbus_object! {
         register_display_service(props: PropMap) -> (),
         unregister_display_service() -> ()
     }
+    <links> {}
+    <into> {}
 
     dbus_iwd::AgentManager => "net.connman.iwd.AgentManager" : AgentManager
     <properties> {}
@@ -139,12 +196,16 @@ dbus_object! {
         register_agent(path: Path<'a>) -> (),
         unregister_agent(path: Path<'a>) -> ()
     }
+    <links> {}
+    <into> {}
 
     dbus_iwd::OrgFreedesktopDBusObjectManager => "org.freedesktop.DBus.ObjectManager" : ObjectManager
     <properties> {}
     <methods> {
         get_managed_objects() -> HashMap<Path<'static>, HashMap<String, PropMap>>
     }
+    <links> {}
+    <into> {}
 
     dbus_iwd::OrgFreedesktopDBusProperties => "org.freedesktop.DBus.Properties" : Properties
     <properties> {}
@@ -153,6 +214,8 @@ dbus_object! {
         // set(interface_name: &str, property_name: &str, value: Variant<Box<dyn RefArg>>) -> (),
         get_all(interface_name: &str) -> PropMap
     }
+    <links> {}
+    <into> {}
 
     dbus_iwd::SimpleConfiguration => "net.connman.iwd.SimpleConfiguration" : SimpleConfiguration
     <properties> {}
@@ -162,4 +225,6 @@ dbus_object! {
         start_pin(pin: &str) -> (),
         cancel() -> ()
     }
+    <links> {}
+    <into> {}
 }
