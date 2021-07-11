@@ -19,7 +19,7 @@
             <tr>
               <td class="text-right"><h4>Connected Network</h4></td>
               <td class="text-left" v-if="status.state == 'connected'">{{ status.connected_network.ssid }}</td>
-              <td class="text-left" v-else> N/A </td>
+              <td class="text-left" v-else> - </td>
             </tr>
             <tr>
               <td class="text-right"><h4>PHY</h4></td>

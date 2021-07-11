@@ -9,35 +9,35 @@ const DHCPD_LEASE_DB: &'static str = "/var/lib/dhcp/dhcpd.leases";
 config_file! { DhcpConfigTemplate("dhcpd.conf.hbs") => "/etc/dhcp/dhcpd.conf" }
 
 #[derive(Debug, Clone)]
-pub struct DhcpService {
-    process: Arc<ProcessManager<DhcpMeta>>,
-    state_manager: StateManager,
-}
-
-#[derive(Debug, Clone)]
-pub struct DhcpMeta;
-impl ProcessService for DhcpMeta {
-    const SERVICE_NAME: &'static str = "DHCP";
+pub struct DhcpServerProcess;
+impl ProcessService for DhcpServerProcess {
+    const SERVICE_NAME: &'static str = "DHCP Server";
     const COMMAND: &'static str = "dhcpd";
     const RESTART_TIME: u64 = 8;
 
-    fn get_args(&self) -> &[&str] {
-        &[
-            "-cf",
-            DhcpConfigTemplate::FILE_PATH,
-            "-lf",
-            DHCPD_LEASE_DB,
-            "-f",
-            "--no-pid",
+    fn get_args(&self) -> Vec<String> {
+        vec![
+            "-cf".into(),
+            DhcpConfigTemplate::FILE_PATH.into(),
+            "-lf".into(),
+            DHCPD_LEASE_DB.into(),
+            "-f".into(),
+            "--no-pid".into(),
         ]
     }
 }
 
-impl DhcpService {
+#[derive(Debug, Clone)]
+pub struct DhcpServer {
+    process: Arc<ProcessManager<DhcpServerProcess>>,
+    state_manager: StateManager,
+}
+
+impl DhcpServer {
     pub async fn new(state_manager: StateManager) -> Result<Self> {
         Ok(Self {
             state_manager: state_manager.clone(),
-            process: Arc::new(ProcessManager::new(DhcpMeta, state_manager).await?),
+            process: Arc::new(ProcessManager::new(DhcpServerProcess, state_manager).await?),
         })
     }
 

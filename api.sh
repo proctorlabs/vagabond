@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 
 ln -sf ./ui/dist ./static
-docker run --rm -it \
+
+docker run --rm -it --name vagabond_api \
     -v $PWD/.tmp/registry:/toolchain/registry \
     -v $PWD/.tmp/downloads:/toolchain/downloads \
     -v $PWD/.tmp/tmp:/toolchain/tmp \
@@ -9,4 +10,4 @@ docker run --rm -it \
     -v $PWD:/app \
     -v $PWD/.tmp/target:/app/target \
     -w /app --privileged --net host \
-    $(docker build -q api/) cargo run -- -c dev.toml -l debug
+    $(docker build -q api/) cargo run -- -c dev.toml -l info

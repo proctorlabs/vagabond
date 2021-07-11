@@ -30,6 +30,8 @@
               <tr v-for="item in interfaces" :key="item.name">
                 <td>
                   {{ item.name }}
+                  <v-btn v-on:click="dhcpRenew({iface: item.name})">Renew</v-btn>
+                  <v-btn v-on:click="dhcpRelease({iface: item.name})">Release</v-btn>
                 </td>
                 <td>{{ item.up }}</td>
                 <td>
@@ -83,7 +85,7 @@ import { mapGetters, mapActions } from 'vuex'
 export default {
   name: 'Dashboard',
   methods: {
-    ...mapActions(['getStatus', 'listInterfaces']),
+    ...mapActions(['getStatus', 'listInterfaces', 'dhcpRenew', 'dhcpRelease']),
     formatMac: function(mac) {
       var result = []
       mac.forEach((u8) => {

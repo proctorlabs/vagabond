@@ -28,6 +28,42 @@ impl Default for NetworkConfig {
     }
 }
 
+impl NetworkConfig {
+    pub fn wifi_wan_interfaces(&self) -> Vec<String> {
+        self.wans
+            .iter()
+            .filter_map(|wan| {
+                if wan.is_wlan() {
+                    Some(wan.interface_name())
+                } else {
+                    None
+                }
+            })
+            .collect()
+    }
+
+    pub fn wan_interfaces(&self) -> Vec<String> {
+        self.wans.iter().map(|i| i.interface_name()).collect()
+    }
+
+    pub fn local_interfaces(&self) -> Vec<String> {
+        let mut result = vec![];
+        if self.lan.enabled {
+            result.push(self.lan.interface.clone())
+        }
+        if self.wlan.enabled {
+            result.push(self.lan.interface.clone())
+        }
+        result
+    }
+
+    pub fn interfaces(&self) -> Vec<String> {
+        let mut result = self.wan_interfaces();
+        result.append(&mut self.local_interfaces());
+        result
+    }
+}
+
 #[derive(Serialize, Deserialize, Clone, Debug, IsVariant)]
 #[serde(tag = "type", deny_unknown_fields)]
 pub enum NetworkWan {
@@ -37,6 +73,16 @@ pub enum NetworkWan {
     WLAN { interface: String },
     #[serde(rename = "unmanaged")]
     Unmanaged { interface: String },
+}
+
+impl NetworkWan {
+    pub fn interface_name(&self) -> String {
+        match &self {
+            &NetworkWan::DHCP { interface }
+            | &NetworkWan::WLAN { interface }
+            | &NetworkWan::Unmanaged { interface } => interface.clone(),
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

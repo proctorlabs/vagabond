@@ -24,8 +24,7 @@ impl WebsocketRxMessage {
                 send(&response, tx).await?
             }
             &WebsocketRxMessage::WifiStatus => {
-                let response =
-                    WebsocketTxMessage::WifiStatus(app.iwd.get_wifi_device().await?);
+                let response = WebsocketTxMessage::WifiStatus(app.iwd.get_wifi_device().await?);
                 send(&response, tx).await?
             }
             &WebsocketRxMessage::ListInterfaces => {
@@ -44,6 +43,12 @@ impl WebsocketRxMessage {
                     dhcpd,
                 };
                 send(&response, tx).await?
+            }
+            WebsocketRxMessage::DhcpRenew(iface) => {
+                app.system.dhcp_renew(iface).await?;
+            }
+            WebsocketRxMessage::DhcpRelease(iface) => {
+                app.system.dhcp_release(iface).await?;
             }
         }
         Ok(())

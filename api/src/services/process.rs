@@ -3,22 +3,29 @@ use crate::data::ServiceState;
 use super::*;
 use anyhow::Result;
 use async_trait::async_trait;
+use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::Arc;
+use std::time::Duration;
 use tokio::io::AsyncBufReadExt;
 use tokio::process::{Child, ChildStderr, ChildStdout};
 use tokio::sync::RwLock;
+use tokio::time::sleep;
+
+use nix::sys::signal::{self, Signal};
+use nix::unistd::Pid;
 
 pub trait ProcessService: Clone + Sync + Send + Sized {
     const SERVICE_NAME: &'static str;
     const COMMAND: &'static str;
     const RESTART_TIME: u64;
-    fn get_args(&self) -> &[&str];
+    fn get_args(&self) -> Vec<String>;
 }
 
 #[derive(Debug, Clone)]
 pub struct ProcessManager<P: ProcessService> {
     status: Arc<RwLock<ServiceState>>,
     state_manager: StateManager,
+    pid: Arc<AtomicU32>,
     meta: P,
 }
 
@@ -42,7 +49,7 @@ impl<P: ProcessService> Service for ProcessManager<P> {
             if *status == ServiceState::Running {
                 return Err(anyhow::anyhow!(format!(
                     "{} service is already running!",
-                    P::COMMAND
+                    P::SERVICE_NAME
                 )));
             }
             *status = ServiceState::Running;
@@ -58,13 +65,15 @@ impl<P: ProcessService> Service for ProcessManager<P> {
 
         let stdout = cmd_process.stdout.take().unwrap();
         let stderr = cmd_process.stderr.take().unwrap();
+        self.set_pid(cmd_process.id().unwrap_or_default());
 
         tokio::try_join!(
-            self.clone().watch_process(cmd_process),
+            self.clone().watch_process(&mut cmd_process),
             self.clone().watch_bus(),
             self.clone().log_stdout(stdout),
             self.clone().log_stderr(stderr),
         )?;
+        cmd_process.wait().await?;
         Ok(())
     }
 }
@@ -74,24 +83,46 @@ impl<P: ProcessService> ProcessManager<P> {
         Ok(Self {
             meta,
             state_manager,
+            pid: Arc::new(AtomicU32::new(0)),
             status: Arc::new(RwLock::new(ServiceState::Stopped)),
         })
+    }
+
+    pub fn get_pid(&self) -> u32 {
+        self.pid.load(Ordering::Relaxed)
+    }
+
+    fn set_pid(&self, pid: u32) {
+        let cid = self.get_pid();
+        self.pid
+            .compare_exchange(cid, pid, Ordering::Relaxed, Ordering::Relaxed)
+            .unwrap_or_default();
+    }
+
+    pub fn signal(&self, signal: Signal) -> Result<()> {
+        let upid = self.get_pid();
+        if upid != 0 {
+            let pid = Pid::from_raw(upid as i32);
+            signal::kill(pid, signal)?;
+        }
+        Ok(())
     }
 
     pub async fn current_state(&self) -> Result<ServiceState> {
         Ok(*self.status.read().await)
     }
 
-    async fn watch_process(self, mut cmd_process: Child) -> Result<()> {
+    async fn watch_process(self, cmd_process: &mut Child) -> Result<()> {
         let exit_status = cmd_process.wait().await?;
+        self.set_pid(0);
         *self.status.write().await = ServiceState::Failed;
-        // This sleep gives a little time for buffers to clear
-        tokio::time::sleep(tokio::time::Duration::from_millis(300)).await;
-        Err::<(), anyhow::Error>(anyhow::anyhow!(format!(
-            "{} process exited with {}",
-            P::COMMAND,
+        warn!(
+            "[{}] Process exited with status {}",
+            P::SERVICE_NAME,
             exit_status
-        )))
+        );
+        sleep(Duration::from_millis(500)).await;
+        Err(anyhow::anyhow!("[{}] Exited", P::SERVICE_NAME))
     }
 
     async fn watch_bus(self) -> Result<()> {
@@ -100,10 +131,9 @@ impl<P: ProcessService> ProcessManager<P> {
             match bus.recv().await? {
                 crate::bus::Event::Shutdown => {
                     *self.status.write().await = ServiceState::Stopped;
-                    return Err::<(), anyhow::Error>(anyhow::anyhow!(format!(
-                        "Aborting {} due to shutdown signal",
-                        P::SERVICE_NAME
-                    )));
+                    warn!("[{}] Aborting service due to shutdown", P::SERVICE_NAME);
+                    self.signal(Signal::SIGTERM)?;
+                    return Ok(());
                 }
             }
         }

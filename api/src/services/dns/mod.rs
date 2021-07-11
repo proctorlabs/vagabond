@@ -14,12 +14,17 @@ pub struct DnsService {
 #[derive(Debug, Clone)]
 pub struct DnsMeta;
 impl ProcessService for DnsMeta {
-    const SERVICE_NAME: &'static str = "DNS";
+    const SERVICE_NAME: &'static str = "DNS Server";
     const COMMAND: &'static str = "unbound";
     const RESTART_TIME: u64 = 8;
 
-    fn get_args(&self) -> &[&str] {
-        &["-d", "-p", "-c", UnboundConfigTemplate::FILE_PATH]
+    fn get_args(&self) -> Vec<String> {
+        vec![
+            "-d".into(),
+            "-p".into(),
+            "-c".into(),
+            UnboundConfigTemplate::FILE_PATH.into(),
+        ]
     }
 }
 

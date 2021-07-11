@@ -36,30 +36,30 @@ pub struct IwdManager {
 #[derive(Debug, Clone)]
 pub struct DbusMeta;
 impl ProcessService for DbusMeta {
-    const SERVICE_NAME: &'static str = "dbus";
+    const SERVICE_NAME: &'static str = "Dbus Daemon";
     const COMMAND: &'static str = "dbus-daemon";
     const RESTART_TIME: u64 = 30;
 
-    fn get_args(&self) -> &[&str] {
-        &[
-            "--system",
-            "--nofork",
-            "--nopidfile",
-            "--nosyslog",
-            "--print-address",
+    fn get_args(&self) -> Vec<String> {
+        vec![
+            "--system".into(),
+            "--nofork".into(),
+            "--nopidfile".into(),
+            "--nosyslog".into(),
+            "--print-address".into(),
         ]
     }
 }
 
 #[derive(Debug, Clone)]
-pub struct IwdMeta;
+pub struct IwdMeta(Vec<String>);
 impl ProcessService for IwdMeta {
-    const SERVICE_NAME: &'static str = "iwd";
+    const SERVICE_NAME: &'static str = "Wireless Daemon";
     const COMMAND: &'static str = "/usr/libexec/iwd";
     const RESTART_TIME: u64 = 8;
 
-    fn get_args(&self) -> &[&str] {
-        &[]
+    fn get_args(&self) -> Vec<String> {
+        vec!["-I".into(), self.0.join(",")]
     }
 }
 
@@ -76,7 +76,13 @@ impl IwdManager {
         Ok(IwdManager {
             dbus_state: Arc::new(RwLock::new(DbusState::Stopped)),
             dbus_process: Arc::new(ProcessManager::new(DbusMeta, state_manager.clone()).await?),
-            iwd_process: Arc::new(ProcessManager::new(IwdMeta, state_manager.clone()).await?),
+            iwd_process: Arc::new(
+                ProcessManager::new(
+                    IwdMeta(state_manager.config.network.wifi_wan_interfaces()),
+                    state_manager.clone(),
+                )
+                .await?,
+            ),
             state_manager,
         })
     }
@@ -281,37 +287,6 @@ impl IwdManager {
             supported_modes,
         })
     }
-
-    // pub async fn get_connected_network(&self) -> Result<Option<WifiNetwork>> {
-    //     let station: Option<Station> = self.get_first().await?;
-    //     if station.is_none() {
-    //         warn!("No station available!");
-    //         return Ok(None);
-    //     }
-    //     let station = station.unwrap();
-    //     let mut device = station.device().await?;
-    //     let mut adapter = device.adapter().await?;
-    //     device.fetch_properties().await?;
-    //     adapter.fetch_properties().await?;
-
-    //     warn!(
-    //         "Station: {:?}, Device: {:?}, Adapter: {:?}",
-    //         station, device, adapter
-    //     );
-    //     if station.state.as_ref().map(|s| s.as_str()) == Some("disconnected") {
-    //         return Ok(None);
-    //     }
-
-    //     let mut network = station.connected_network().await?;
-    //     network.fetch_properties().await?;
-    //     Ok(Some(WifiNetwork {
-    //         ssid: network.name.unwrap_or_default(),
-    //         security: network.type_.unwrap_or_default().into(),
-    //         signal: -50,
-    //         known: true,
-    //         interface: None,
-    //     }))
-    // }
 
     pub async fn get_wifi_networks(&self) -> Result<Vec<WifiNetwork>> {
         let mut result = vec![];

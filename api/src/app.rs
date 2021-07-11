@@ -15,7 +15,7 @@ pub struct VagabondInner {
     pub http: HttpServer,
     pub iwd: IwdManager,
     pub dns: DnsService,
-    pub dhcp: DhcpService,
+    pub dhcp: DhcpServer,
     pub hostapd: HostapdService,
 }
 
@@ -29,11 +29,11 @@ impl Vagabond {
             IwdManager::new(state.clone()),
             HttpServer::new(state.clone()),
             DnsService::new(state.clone()),
-            DhcpService::new(state.clone()),
+            DhcpServer::new(state.clone()),
             HostapdService::new(state.clone()),
         )?;
         let result = Vagabond(Arc::new(VagabondInner {
-            system: SystemManager::new(&config),
+            system: SystemManager::new(state.clone()),
             config,
             state,
             iwd,
@@ -49,6 +49,7 @@ impl Vagabond {
     pub async fn start(&self) -> Result<()> {
         self.system.setup_sysctl()?;
         self.system.setup_iptables().await?;
+        self.system.setup_interfaces().await?;
         try_join!(
             self.iwd.spawn_dbus(),
             self.iwd.spawn_iwd(),

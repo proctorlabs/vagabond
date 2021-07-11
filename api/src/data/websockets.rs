@@ -12,6 +12,8 @@ pub enum WebsocketRxMessage {
     WifiStatus,
     WifiConnect(ConnectionParameters),
     WifiDisconnect,
+    DhcpRenew(String),
+    DhcpRelease(String),
     GetStatus,
     ListInterfaces,
 }

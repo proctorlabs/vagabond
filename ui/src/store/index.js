@@ -149,6 +149,24 @@ var store_obj = {
         })
       )
     },
+
+    dhcpRenew: (state, { iface }) => {
+      Vue.prototype.$socket.send(
+        JSON.stringify({
+          type: 'dhcp_renew',
+          data: iface,
+        })
+      )
+    },
+
+    dhcpRelease: (state, { iface }) => {
+      Vue.prototype.$socket.send(
+        JSON.stringify({
+          type: 'dhcp_release',
+          data: iface,
+        })
+      )
+    },
   },
 }
 

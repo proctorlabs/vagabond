@@ -14,12 +14,12 @@ pub struct HostapdService {
 #[derive(Debug, Clone)]
 pub struct HostapdMeta;
 impl ProcessService for HostapdMeta {
-    const SERVICE_NAME: &'static str = "hostapd";
+    const SERVICE_NAME: &'static str = "Wlan Access Point";
     const COMMAND: &'static str = "hostapd";
     const RESTART_TIME: u64 = 8;
 
-    fn get_args(&self) -> &[&str] {
-        &[HostapdConfigurationTemplate::FILE_PATH]
+    fn get_args(&self) -> Vec<String> {
+        vec![HostapdConfigurationTemplate::FILE_PATH.into()]
     }
 }
 
