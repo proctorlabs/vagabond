@@ -6,8 +6,10 @@ use crate::data::*;
 use crate::util::run_command;
 use anyhow::Result;
 use async_trait::async_trait;
+use dbus::channel::MatchingReceiver;
 use dbus::{
     arg::RefArg,
+    message::MatchRule,
     nonblock::{Proxy, SyncConnection},
     Path,
 };
@@ -15,6 +17,8 @@ use dbus_objects::*;
 use dbus_tokio::connection;
 use std::{sync::Arc, time::Duration};
 use tokio::{sync::RwLock, task::spawn_blocking};
+
+use dbus_crossroads::{Context, Crossroads};
 
 config_file! { IWDConfigTemplate("iwd-main.conf.hbs") => "/data/iwd/etc/main.conf" }
 
@@ -310,6 +314,56 @@ impl IwdManager {
         }
         Ok(result)
     }
+
+    const DBUS_NAME: &'static str = "com.vagabond.manager";
+    const SIGNAL_AGENT: &'static str = "net.connman.iwd.SignalLevelAgent";
+
+    async fn setup_dbus_receiver(&self, conn: &Arc<SyncConnection>) -> Result<()> {
+        debug!("Setting up crossroads");
+        let mut cr = Crossroads::new();
+        cr.set_async_support(Some((
+            conn.clone(),
+            Box::new(|fut| {
+                tokio::spawn(fut);
+            }),
+        )));
+
+        debug!("Creating IWD signal agent interface");
+        // dbus-send --system --print-reply --type=method_call --dest=com.vagabond.manager /iwd/agent com.vagabond.manager.Changed string:"test"
+        let signal_agent = cr.register(Self::SIGNAL_AGENT, |b| {
+            b.method(
+                "Changed",
+                ("path", "level"),
+                (),
+                move |_: &mut Context, _: &mut StateManager, (path, level): (Path, u8)| {
+                    warn!("Signal update: {} -> {:?}", path, level);
+                    Ok(())
+                },
+            );
+            b.method(
+                "Release",
+                ("path",),
+                (),
+                move |_: &mut Context, _: &mut StateManager, (path,): (Path,)| {
+                    warn!("Released: {}", path);
+                    Ok(())
+                },
+            );
+        });
+        cr.insert("/iwd/agent", &[signal_agent], self.state_manager.clone());
+
+        debug!("Setting up receiver");
+        conn.start_receive(
+            MatchRule::new_method_call(),
+            Box::new(move |msg, conn| {
+                info!("Received a call to: {:?}", msg.member());
+                cr.handle_message(msg, conn).unwrap();
+                true
+            }),
+        );
+
+        Ok(())
+    }
 }
 
 #[async_trait]
@@ -330,21 +384,39 @@ impl Service for IwdManager {
         if !self.dbus_state.read().await.is_connected() {
             info!("Connecting to iwd via dbus...");
             let (resource, conn) = spawn_blocking(|| connection::new_system_sync()).await??;
-            *self.dbus_state.write().await = DbusState::Connected(conn.clone());
-            let state_manager = self.state_manager.clone();
+            self.setup_dbus_receiver(&conn).await?;
             let zelf = self.clone();
-            let mut resource = resource;
-            while state_manager.current_status().await != crate::Status::ShuttingDown {
-                let err = resource.await;
-                warn!("Lost connection to D-Bus: {}", err);
-                *zelf.dbus_state.write().await = DbusState::Failed(err.to_string());
-                tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
-                info!("Attempting to reconnect to dbus...");
-                let (new_resource, new_conn) =
-                    spawn_blocking(|| connection::new_system_sync()).await??;
-                *zelf.dbus_state.write().await = DbusState::Connected(new_conn.clone());
-                resource = new_resource;
-            }
+            let zelf2 = self.clone();
+            let conn2 = conn.clone();
+            let res = tokio::try_join!(
+                async move {
+                    *zelf.dbus_state.write().await = DbusState::Connected(conn.clone());
+                    let err = resource.await;
+                    *zelf.dbus_state.write().await = DbusState::Failed(err.to_string());
+                    warn!("Lost connection to D-Bus: {}", err);
+                    Ok::<(), anyhow::Error>(())
+                },
+                async {
+                    info!("Requesting name");
+                    conn2
+                        .request_name(Self::DBUS_NAME, false, true, false)
+                        .await?;
+                    let station = zelf2.get_first::<Station>().await?;
+                    if let Some(station) = station {
+                        info!("Registering signal level agent");
+                        station
+                            .register_signal_level_agent(
+                                Path::new("/iwd/agent").unwrap(),
+                                vec![-50, -55, -60, -65, -70, -75, -80, -85, -90],
+                            )
+                            .await?;
+                        info!("Registered!");
+                    }
+                    Ok(())
+                }
+            );
+            *self.dbus_state.write().await = DbusState::Stopped;
+            res?;
         }
         Ok(())
     }

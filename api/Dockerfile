@@ -25,7 +25,7 @@ FROM ubuntu:focal as service
 
 RUN echo "resolvconf resolvconf/linkify-resolvconf boolean false" | debconf-set-selections && \
     apt-get update && apt-get install --no-install-recommends -y \
-    wireguard iptables hostapd python3-pip iproute2 iputils-ping nmap iw unbound isc-dhcp-server curl udhcpc dbus resolvconf \
+    wireguard iptables hostapd iproute2 iputils-ping nmap iw unbound curl ca-certificates udhcpc udhcpd dbus resolvconf \
     libdbus-1-dev build-essential && \
     mkdir -p /var/run/dbus /toolchain && \
     rm -rf /var/lib/apt/lists/*
@@ -38,3 +38,5 @@ ENV CARGO_HOME=/toolchain \
 
 RUN curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain stable -y
 RUN chmod -R 777 /toolchain
+
+COPY dbus/vagabond.conf.xml /usr/share/dbus-1/system.d/vagabond.conf

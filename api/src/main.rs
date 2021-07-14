@@ -15,7 +15,6 @@ mod macros;
 
 mod app;
 mod args;
-mod bus;
 mod config;
 mod data;
 mod services;

@@ -7,26 +7,38 @@ type = 'dhcp'
 interface = 'eth0'
 
 [[network.wan]]
-type = 'wlan'
+type = 'wifi'
 interface = 'wlan0'
 
 [network.lan]
 enabled = true
+interface = 'eth1'
+subnet = "192.168.1.0/24"
+address = "192.168.1.1"
 
 [network.wlan]
 enabled = true
+interface = 'wlan1'
+subnet = "192.168.2.0/24"
+address = "192.168.2.1"
+channel = 1
+ssid = "Vagabond"
+hostapd_config = """
+country_code=US
+"""
 
 [dns]
 enabled = true
 block_malicious = false
+port = 53
 
 [dhcp]
 enabled = true
 
 [dhcp.lan.range]
-start = "172.16.5.100"
-end = "172.16.5.199"
+start = "192.168.1.100"
+end = "192.168.1.199"
 
 [dhcp.wlan.range]
-start = "172.16.6.100"
-end = "172.16.6.199"
+start = "192.168.2.100"
+end = "192.168.2.199"

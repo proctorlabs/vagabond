@@ -1,4 +1,5 @@
 use crate::state::StateManager;
+use crate::util::run_command;
 use crate::{config::VagabondConfig, data::Interfaces, services::DhcpClient};
 use anyhow::{anyhow, Result};
 use nix::unistd;
@@ -73,13 +74,35 @@ impl SystemManager {
 
     pub async fn setup_interfaces(&self) -> Result<()> {
         for wan in self.state.config.network.wans.iter() {
-            if wan.is_dhcp() || wan.is_wlan() {
+            if wan.is_dhcp() || wan.is_wifi() {
                 let mut dhcp_map = self.dhcp_clients.write().await;
                 let iface = wan.interface_name();
                 let client = DhcpClient::new(self.state.clone(), iface.clone()).await?;
                 client.spawn().await?;
                 dhcp_map.insert(iface, client);
             }
+        }
+
+        if self.state.config.network.lan.enabled {
+            info!("Configuring LAN interface");
+            let ifname = self.state.config.network.lan.interface.as_str();
+            let addr = self.state.config.network.lan.address.to_string();
+            let prefix = self.state.config.network.lan.subnet.prefix_len();
+            let addr = format!("{}/{}", addr, prefix);
+            let addr_str = addr.as_str();
+            run_command("ip", ["link", "set", ifname, "up"]).await?;
+            run_command("ip", ["addr", "change", addr_str, "dev", ifname]).await?;
+        }
+
+        if self.state.config.network.wlan.enabled {
+            info!("Configuring WLAN interface");
+            let ifname = self.state.config.network.wlan.interface.as_str();
+            let addr = self.state.config.network.wlan.address.to_string();
+            let prefix = self.state.config.network.wlan.subnet.prefix_len();
+            let addr = format!("{}/{}", addr, prefix);
+            let addr_str = addr.as_str();
+            run_command("ip", ["link", "set", ifname, "up"]).await?;
+            run_command("ip", ["addr", "change", addr_str, "dev", ifname]).await?;
         }
         Ok(())
     }

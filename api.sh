@@ -10,4 +10,4 @@ docker run --rm -it --name vagabond_api \
     -v $PWD:/app \
     -v $PWD/.tmp/target:/app/target \
     -w /app --privileged --net host \
-    $(docker build -q api/) cargo run -- -c dev.toml -l info
+    $(docker build -q api/) cargo run -- -c dev.toml -l debug

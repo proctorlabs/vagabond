@@ -1,0 +1,17 @@
+interface       {{ self.network.wlan.interface }}
+
+start           {{ self.dhcp.wlan.range.start.to_string() }}
+end             {{ self.dhcp.wlan.range.end.to_string() }}
+
+lease_file      /var/lib/misc/udhcpd.wlan.leases
+pidfile         /var/run/udhcpd.wlan.pid
+
+auto_time       3600
+max_leases      254
+remaining       yes
+
+option  router  {{ self.network.wlan.address.to_string() }}
+option  dns     {{ self.network.wlan.address.to_string() }}
+option  subnet  {{ self.network.wlan.subnet.netmask().to_string() }}
+option  domain  {{ self.network.domain }}
+option  lease   864000

@@ -1,35 +1,39 @@
 use super::*;
 use crate::data::ServiceStatus;
 use anyhow::Result;
-use std::fs::OpenOptions;
 use std::sync::Arc;
 
-const DHCPD_LEASE_DB: &'static str = "/var/lib/dhcp/dhcpd.leases";
-
-config_file! { DhcpConfigTemplate("dhcpd.conf.hbs") => "/etc/dhcp/dhcpd.conf" }
+config_file! { DhcpLanConfigTemplate("udhcpd.lan.conf.hbs") => "/etc/udhcpd.lan.conf" }
+config_file! { DhcpWlanConfigTemplate("udhcpd.wlan.conf.hbs") => "/etc/udhcpd.wlan.conf" }
 
 #[derive(Debug, Clone)]
-pub struct DhcpServerProcess;
-impl ProcessService for DhcpServerProcess {
-    const SERVICE_NAME: &'static str = "DHCP Server";
-    const COMMAND: &'static str = "dhcpd";
+pub struct DhcpLanServerProcess;
+impl ProcessService for DhcpLanServerProcess {
+    const SERVICE_NAME: &'static str = "DHCP LAN Server";
+    const COMMAND: &'static str = "udhcpd";
     const RESTART_TIME: u64 = 8;
 
     fn get_args(&self) -> Vec<String> {
-        vec![
-            "-cf".into(),
-            DhcpConfigTemplate::FILE_PATH.into(),
-            "-lf".into(),
-            DHCPD_LEASE_DB.into(),
-            "-f".into(),
-            "--no-pid".into(),
-        ]
+        vec!["-f".into(), DhcpLanConfigTemplate::FILE_PATH.into()]
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct DhcpWlanServerProcess;
+impl ProcessService for DhcpWlanServerProcess {
+    const SERVICE_NAME: &'static str = "DHCP WLAN Server";
+    const COMMAND: &'static str = "udhcpd";
+    const RESTART_TIME: u64 = 8;
+
+    fn get_args(&self) -> Vec<String> {
+        vec!["-f".into(), DhcpWlanConfigTemplate::FILE_PATH.into()]
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct DhcpServer {
-    process: Arc<ProcessManager<DhcpServerProcess>>,
+    lan_service: Arc<ProcessManager<DhcpLanServerProcess>>,
+    wlan_service: Arc<ProcessManager<DhcpWlanServerProcess>>,
     state_manager: StateManager,
 }
 
@@ -37,30 +41,33 @@ impl DhcpServer {
     pub async fn new(state_manager: StateManager) -> Result<Self> {
         Ok(Self {
             state_manager: state_manager.clone(),
-            process: Arc::new(ProcessManager::new(DhcpServerProcess, state_manager).await?),
+            lan_service: Arc::new(
+                ProcessManager::new(DhcpLanServerProcess, state_manager.clone()).await?,
+            ),
+            wlan_service: Arc::new(
+                ProcessManager::new(DhcpWlanServerProcess, state_manager).await?,
+            ),
         })
     }
 
     pub async fn status(&self) -> Result<ServiceStatus> {
         Ok(ServiceStatus {
             enabled: self.state_manager.config.dhcp.enabled,
-            state: self.process.current_state().await?,
+            state: self.lan_service.current_state().await?,
             detail: Default::default(),
         })
     }
 
     pub async fn spawn(&self) -> Result<()> {
         if self.state_manager.config.dhcp.enabled {
-            DhcpConfigTemplate::write(self.state_manager.config.clone()).await?;
-            OpenOptions::new()
-                .create_new(true)
-                .write(true)
-                .open(DHCPD_LEASE_DB)
-                .map(|_| "")
-                .unwrap_or_default();
-            self.process.clone().spawn().await?;
-        } else {
-            info!("DHCP service is disabled");
+            if self.state_manager.config.network.lan.enabled {
+                DhcpLanConfigTemplate::write(self.state_manager.config.clone()).await?;
+                self.lan_service.clone().spawn().await?;
+            }
+            if self.state_manager.config.network.wlan.enabled {
+                DhcpWlanConfigTemplate::write(self.state_manager.config.clone()).await?;
+                self.wlan_service.clone().spawn().await?;
+            }
         }
         Ok(())
     }

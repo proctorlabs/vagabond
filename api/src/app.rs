@@ -1,10 +1,8 @@
 use super::*;
 use crate::system::SystemManager;
 use anyhow::Result;
-use bus::Event;
 use services::*;
 use std::sync::Arc;
-use tokio::time::{sleep, Duration};
 use tokio::{signal, try_join};
 
 #[derive(Debug, Clone)]
@@ -60,17 +58,10 @@ impl Vagabond {
             self.hostapd.spawn(),
         )?;
 
-        // self.iwd.run_test().await?;
-        self.state.transition(Status::Running).await;
+        self.state.finish_startup().await;
         signal::ctrl_c().await?;
         info!("Interrupt received, shutting down...");
-
-        //TODO: Remove static bus
-        bus::broadcast(Event::Shutdown).unwrap_or_default();
-        self.state.transition(Status::ShuttingDown).await;
-        while bus::receiver_count() > 0 {
-            sleep(Duration::from_millis(100)).await;
-        }
+        self.state.shutdown().await?;
         debug!("Shutdown completed cleanly.");
         Ok(())
     }

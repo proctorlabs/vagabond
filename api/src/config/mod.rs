@@ -38,7 +38,7 @@ impl VagabondConfig {
             match wan {
                 NetworkWan::DHCP { interface }
                 | NetworkWan::Unmanaged { interface }
-                | NetworkWan::WLAN { interface } => {
+                | NetworkWan::Wifi { interface } => {
                     result.push(interface.clone());
                 }
             }

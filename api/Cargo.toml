@@ -6,43 +6,44 @@ workspace = "../"
 
 [dependencies]
 # Logging
-log = { version="0.4" }
-flexi_logger = { version="0.18" }
+log = { version = "0.4" }
+flexi_logger = { version = "0.18" }
 
 # Utility
-anyhow = { version="1.0" }
-lazy_static = { version="1.4" }
-derive_more = { version="0.99" }
-ipnet = { version="2.3", features=["serde"] }
+anyhow = { version = "1.0" }
+lazy_static = { version = "1.4" }
+derive_more = { version = "0.99" }
+ipnet = { version = "2.3", features = ["serde"] }
 
 # System
-sysctl = { version="0.4" }
-nix = { version="0.21" }
-iptables = { version="0.4" }
+sysctl = { version = "0.4" }
+nix = { version = "0.22" }
+iptables = { version = "0.4" }
 
 # Async
-tokio = { version="1.7", features=["full"] }
-async-trait = { version="0.1" }
-futures = { version="0.3" }
+tokio = { version = "1.7", features = ["full"] }
+async-trait = { version = "0.1" }
+futures = { version = "0.3" }
 
 # CLI Args
-clap = { version="2.33" }
-structopt = { version="0.3" }
+clap = { version = "2.33" }
+structopt = { version = "0.3" }
 
 # HTTP
-warp = { version="0.3" }
+warp = { version = "0.3" }
 
 # Serialization
-serde = { version="1.0" }
-serde_json = { version="1.0" }
-toml = { version="0.5" }
+serde = { version = "1.0" }
+serde_json = { version = "1.0" }
+toml = { version = "0.5" }
 
 # DBUS
-dbus = { version="0.9", features=["futures"] }
-dbus-tokio = { version="0.7" }
+dbus = { version = "0.9", features = ["futures"] }
+dbus-tokio = { version = "0.7" }
+dbus-crossroads = { version = "0.4.0" }
 
 # Compiled templates
-yarte = { version="0.15" }
+yarte = { version = "0.15" }
 
 [build-dependencies]
 yarte = "0.15"

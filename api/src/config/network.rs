@@ -33,7 +33,7 @@ impl NetworkConfig {
         self.wans
             .iter()
             .filter_map(|wan| {
-                if wan.is_wlan() {
+                if wan.is_wifi() {
                     Some(wan.interface_name())
                 } else {
                     None
@@ -69,8 +69,8 @@ impl NetworkConfig {
 pub enum NetworkWan {
     #[serde(rename = "dhcp")]
     DHCP { interface: String },
-    #[serde(rename = "wlan")]
-    WLAN { interface: String },
+    #[serde(rename = "wifi")]
+    Wifi { interface: String },
     #[serde(rename = "unmanaged")]
     Unmanaged { interface: String },
 }
@@ -79,7 +79,7 @@ impl NetworkWan {
     pub fn interface_name(&self) -> String {
         match &self {
             &NetworkWan::DHCP { interface }
-            | &NetworkWan::WLAN { interface }
+            | &NetworkWan::Wifi { interface }
             | &NetworkWan::Unmanaged { interface } => interface.clone(),
         }
     }

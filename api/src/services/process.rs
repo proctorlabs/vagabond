@@ -69,7 +69,7 @@ impl<P: ProcessService> Service for ProcessManager<P> {
 
         tokio::try_join!(
             self.clone().watch_process(&mut cmd_process),
-            self.clone().watch_bus(),
+            self.clone().wait_for_shutdown(),
             self.clone().log_stdout(stdout),
             self.clone().log_stderr(stderr),
         )?;
@@ -125,18 +125,12 @@ impl<P: ProcessService> ProcessManager<P> {
         Err(anyhow::anyhow!("[{}] Exited", P::SERVICE_NAME))
     }
 
-    async fn watch_bus(self) -> Result<()> {
-        let mut bus = crate::bus::subscribe();
-        loop {
-            match bus.recv().await? {
-                crate::bus::Event::Shutdown => {
-                    *self.status.write().await = ServiceState::Stopped;
-                    warn!("[{}] Aborting service due to shutdown", P::SERVICE_NAME);
-                    self.signal(Signal::SIGTERM)?;
-                    return Ok(());
-                }
-            }
-        }
+    async fn wait_for_shutdown(self) -> Result<()> {
+        self.state_manager.wait_for_shutdown().await?;
+        *self.status.write().await = ServiceState::Stopped;
+        info!("[{}] Aborting service due to shutdown", P::SERVICE_NAME);
+        self.signal(Signal::SIGTERM)?;
+        return Ok(());
     }
 
     async fn log_stdout(self, stdout: ChildStdout) -> Result<()> {

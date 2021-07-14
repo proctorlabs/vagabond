@@ -21,16 +21,18 @@ pub trait Service: Sized + Clone + Sync + Send {
     async fn run_persistent(self) -> Result<()> {
         loop {
             match self.start().await {
-                Ok(_) => {}
+                Ok(_) => {
+                    info!("[{}] Ended without any error code", self.name());
+                }
                 Err(e) => {
-                    error!("{} service error: {}", self.name(), e);
+                    error!("[{}] service error: {}", self.name(), e);
                 }
             };
             if self.state_manager().await.current_status().await == Status::ShuttingDown {
                 break;
             }
-            warn!(
-                "Restarting {} service in {} seconds...",
+            info!(
+                "[{}] Restarting in {} seconds...",
                 self.name(),
                 self.restart_time()
             );

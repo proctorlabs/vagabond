@@ -33,29 +33,47 @@ RUN yarn install
 RUN yarn build
 
 # Build final container
+FROM ubuntu:focal as vagabond-builder
+
+RUN echo "resolvconf resolvconf/linkify-resolvconf boolean false" | debconf-set-selections && \
+    apt-get update && apt-get install --no-install-recommends -y \
+    'dbus' 'resolvconf' 'libdbus-1-dev' 'build-essential' 'curl' 'ca-certificates' && \
+    mkdir -p /var/run/dbus /toolchain && \
+    rm -rf /var/lib/apt/lists/*
+
+ENV CARGO_HOME=/toolchain \
+    PATH=$PATH:/toolchain/bin \
+    RUSTUP_HOME=/toolchain
+
+RUN curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain stable -y
+RUN chmod -R 777 /toolchain
+WORKDIR /app
+
+# To properly cache dependencies
+COPY Cargo.toml Cargo.lock /app/
+COPY api/Cargo.toml /app/api/Cargo.toml
+RUN mkdir -p api/src/ && touch api/src/main.rs && (cargo build --release || true)
+
+# Full build
+COPY api/ /app/api/
+RUN cargo build --release
+
+# Build final container
 FROM ubuntu:focal as service
 
 RUN echo "resolvconf resolvconf/linkify-resolvconf boolean false" | debconf-set-selections && \
     apt-get update && apt-get install --no-install-recommends -y \
-    wireguard iptables hostapd python3-pip iproute2 iputils-ping nmap iw unbound isc-dhcp-server curl udhcpc dbus resolvconf && \
+    wireguard iptables hostapd iproute2 iputils-ping nmap iw unbound ca-certificates curl udhcpc udhcpd dbus resolvconf && \
     mkdir -p /var/run/dbus && \
     rm -rf /var/lib/apt/lists/*
 
-RUN pip install \
-    quart \
-    jinja2 \
-    toml \
-    ZODB \
-    pyyaml \
-    dbus-next \
-    aiohttp && \
-    rm -rf /root/.cache
-
 COPY --from=iwd-builder /dist/ /
-COPY --from=ui /ui/dist/ /vagabond/static/
+COPY --from=ui /ui/dist/ /app/static/
+COPY --from=vagabond-builder /app/target/release/vagabond /app/vagabond
+COPY api/dbus/vagabond.conf.xml /usr/share/dbus-1/system.d/vagabond.conf
 COPY vagabond.toml /etc/vagabond.toml
-COPY api/ /vagabond/
 
 EXPOSE 80
-HEALTHCHECK --interval=90s CMD [ "curl", "-sL", "http://localhost:80/api/ping" ]
-CMD [ "/usr/local/bin/hypercorn", "-w", "1", "-b", "0.0.0.0:80", "vagabond:create_app()" ]
+WORKDIR /app
+# HEALTHCHECK --interval=90s CMD [ "curl", "-sL", "http://localhost:80/api/ping" ]
+CMD [ "./vagabond" ]

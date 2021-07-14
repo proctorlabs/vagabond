@@ -1,8 +1,11 @@
-use anyhow::Result;
-use std::sync::Arc;
-use tokio::sync::RwLock;
-
 use crate::{app::Vagabond, config::VagabondConfig};
+use anyhow::Result;
+use std::{sync::Arc, time::Duration};
+use tokio::{sync::RwLock, time::sleep};
+
+use self::events::EventChannel;
+
+mod events;
 
 #[derive(Debug, Clone, Deref)]
 pub struct StateManager(Arc<StateManagerInner>);
@@ -12,6 +15,7 @@ pub struct StateManagerInner {
     pub config: VagabondConfig,
     app: Arc<RwLock<Option<Vagabond>>>,
     status: Arc<RwLock<Status>>,
+    shutdown: EventChannel<(), 32>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, IsVariant, Display)]
@@ -27,6 +31,7 @@ impl StateManager {
             status: Arc::new(RwLock::new(Status::Starting)),
             app: Arc::new(RwLock::new(None)),
             config,
+            shutdown: EventChannel::new(),
         })))
     }
 
@@ -55,7 +60,21 @@ impl StateManager {
         *self.status.read().await
     }
 
-    pub async fn transition(&self, status: Status) {
-        *self.status.write().await = status;
+    pub async fn finish_startup(&self) {
+        *self.status.write().await = Status::Running;
+    }
+
+    pub async fn wait_for_shutdown(&self) -> Result<()> {
+        self.shutdown.wait_for(|_| true).await?;
+        Ok(())
+    }
+
+    pub async fn shutdown(&self) -> Result<()> {
+        *self.status.write().await = Status::ShuttingDown;
+        self.shutdown.send(())?;
+        while self.shutdown.has_receivers() {
+            sleep(Duration::from_millis(100)).await;
+        }
+        Ok(())
     }
 }

@@ -1,12 +1,9 @@
 macro_rules! config_file {
     ($class:ident ($file:literal) => $file_path:literal) => {
-        mod t {
-            #![allow(unused_must_use)]
-            #[derive(Deref, Clone, Template)]
-            #[template(path = $file)]
-            pub struct $class(pub crate::VagabondConfig);
-        }
-        pub use t::$class;
+        #[derive(Deref, Clone, Template)]
+        #[template(path = $file)]
+        pub struct $class(pub crate::VagabondConfig);
+
         #[allow(dead_code)]
         impl $class {
             const CONFIG_NOTICE: &'static str =
@@ -16,6 +13,7 @@ macro_rules! config_file {
 
             pub async fn write(config: crate::VagabondConfig) -> anyhow::Result<()> {
                 use tokio::io::AsyncWriteExt;
+                info!("Writing configuration to {}", Self::FILE_PATH);
                 let config_contents = $class(config).to_string();
                 let filepath = std::path::Path::new(Self::FILE_PATH);
                 let dirpath = filepath.parent().unwrap();
