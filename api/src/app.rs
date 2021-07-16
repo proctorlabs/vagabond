@@ -23,15 +23,16 @@ pub struct Vagabond(Arc<VagabondInner>);
 impl Vagabond {
     pub async fn new(config: VagabondConfig) -> Result<Self> {
         let state = StateManager::new(config.clone()).await?;
+        let system = SystemManager::new(state.clone());
         let (iwd, http, dns, dhcp, hostapd) = try_join!(
-            IwdManager::new(state.clone()),
+            IwdManager::new(state.clone(), system.clone()),
             HttpServer::new(state.clone()),
             DnsService::new(state.clone()),
             DhcpServer::new(state.clone()),
             HostapdService::new(state.clone()),
         )?;
         let result = Vagabond(Arc::new(VagabondInner {
-            system: SystemManager::new(state.clone()),
+            system,
             config,
             state,
             iwd,

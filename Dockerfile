@@ -20,6 +20,8 @@ RUN sed -i 's/etc\/iwd/data\/iwd\/etc/g' configure.ac && \
     --with-dbus-datadir=/dist/usr/share && \
     make && make install
 
+RUN mkdir -p /dist/etc/iwd
+
 # Build UI
 FROM node:lts-alpine AS ui
 

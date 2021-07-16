@@ -97,7 +97,7 @@ impl Service for HttpServer {
 
         let routes = ws.or(content).or(alternate_index);
 
-        warp::serve(routes).run(([127, 0, 0, 1], 8081)).await;
+        warp::serve(routes).run(([0, 0, 0, 0], 80)).await;
         Ok(())
     }
 }

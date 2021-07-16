@@ -9,6 +9,6 @@ ListenPort = 51820
 [Peer]
 PublicKey = {{{ this.public_key }}}
 AllowedIPs = {{{ this.allowed_ips }}}
-Endpoint = {{{ this.endpoint }}}
+Endpoint = {{{ this.endpoint }}}:{{{ this.endpoint_port }}}
 PersistentKeepalive = 25
 {{/each }}

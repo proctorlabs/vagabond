@@ -11,14 +11,15 @@ RUN mkdir /build && cd /build && \
 WORKDIR /build/iwd
 
 RUN DEBIAN_FRONTEND=noninteractive apt-get install -y libreadline-dev
-RUN sed -i 's/etc\/iwd/data\/iwd\/etc/g' configure.ac && \
-    ./bootstrap && \
+RUN ./bootstrap && \
     ./configure --prefix=/dist/usr \
     --disable-manual-pages \
     --disable-systemd-service \
-    --localstatedir=/data/iwd/state \
+    --localstatedir=/data/iwd \
     --with-dbus-datadir=/dist/usr/share && \
     make && make install
+
+RUN mkdir -p /dist/etc/iwd
 
 # Build final container
 FROM ubuntu:focal as service
@@ -30,13 +31,12 @@ RUN echo "resolvconf resolvconf/linkify-resolvconf boolean false" | debconf-set-
     mkdir -p /var/run/dbus /toolchain && \
     rm -rf /var/lib/apt/lists/*
 
-COPY --from=iwd-builder /dist/ /
-
 ENV CARGO_HOME=/toolchain \
     PATH=$PATH:/toolchain/bin \
     RUSTUP_HOME=/toolchain
 
 RUN curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain stable -y
 RUN chmod -R 777 /toolchain
+COPY --from=iwd-builder /dist/ /
 
 COPY dbus/vagabond.conf.xml /usr/share/dbus-1/system.d/vagabond.conf

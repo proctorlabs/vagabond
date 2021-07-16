@@ -52,7 +52,7 @@ impl NetworkConfig {
             result.push(self.lan.interface.clone())
         }
         if self.wlan.enabled {
-            result.push(self.lan.interface.clone())
+            result.push(self.wlan.interface.clone())
         }
         result
     }

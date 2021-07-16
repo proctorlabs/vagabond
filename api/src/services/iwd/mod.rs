@@ -3,6 +3,7 @@ mod dbus_objects;
 
 use super::*;
 use crate::data::*;
+use crate::system::SystemManager;
 use crate::util::run_command;
 use anyhow::Result;
 use async_trait::async_trait;
@@ -20,7 +21,7 @@ use tokio::{sync::RwLock, task::spawn_blocking};
 
 use dbus_crossroads::{Context, Crossroads};
 
-config_file! { IWDConfigTemplate("iwd-main.conf.hbs") => "/data/iwd/etc/main.conf" }
+config_file! { IWDConfigTemplate("iwd-main.conf.hbs") => "/etc/iwd/main.conf" }
 
 #[derive(IsVariant)]
 enum DbusState {
@@ -63,6 +64,7 @@ impl ProcessService for IwdMeta {
     const RESTART_TIME: u64 = 8;
 
     fn get_args(&self) -> Vec<String> {
+        // vec!["-d".into(), "-i".into(), self.0.join(",")]
         vec!["-I".into(), self.0.join(",")]
     }
 }
@@ -76,16 +78,15 @@ impl std::fmt::Debug for IwdManager {
 impl IwdManager {
     const BASE_PATH: &'static str = "/";
 
-    pub async fn new(state_manager: StateManager) -> Result<Self> {
+    pub async fn new(state_manager: StateManager, system: SystemManager) -> Result<Self> {
+        let ifaces = system.get_all_interface_names()?;
+        let wifis = state_manager.config.network.wifi_wan_interfaces();
+        let ifaces = ifaces.into_iter().filter(|s| !wifis.contains(s)).collect();
         Ok(IwdManager {
             dbus_state: Arc::new(RwLock::new(DbusState::Stopped)),
             dbus_process: Arc::new(ProcessManager::new(DbusMeta, state_manager.clone()).await?),
             iwd_process: Arc::new(
-                ProcessManager::new(
-                    IwdMeta(state_manager.config.network.wifi_wan_interfaces()),
-                    state_manager.clone(),
-                )
-                .await?,
+                ProcessManager::new(IwdMeta(ifaces), state_manager.clone()).await?,
             ),
             state_manager,
         })
@@ -119,6 +120,7 @@ impl IwdManager {
     }
 
     pub async fn spawn_iwd(&self) -> Result<()> {
+        IWDConfigTemplate::write(self.state_manager.config.clone()).await?;
         self.iwd_process.clone().spawn().await?;
         Ok(())
     }

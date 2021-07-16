@@ -7,16 +7,19 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use tokio::task::spawn_blocking;
+pub use wireguard::*;
 
 mod ctls;
 mod interfaces;
 mod routing;
+mod wireguard;
 
 #[derive(Debug)]
 pub struct SystemInfo {
     state: StateManager,
     pub is_root: bool,
     dhcp_clients: Arc<RwLock<HashMap<String, DhcpClient>>>,
+    wireguard: Wireguard,
 }
 
 #[derive(Debug, Clone, Deref)]
@@ -32,22 +35,31 @@ impl SystemManager {
         }
 
         SystemManager(Arc::new(SystemInfo {
+            dhcp_clients: Default::default(),
+            wireguard: Wireguard(state.clone()),
             state,
             is_root,
-            dhcp_clients: Default::default(),
         }))
     }
 
     pub fn get_interfaces(&self) -> Result<Interfaces> {
         let mut ifaces = interfaces::get_interfaces()?;
         let mut result: Interfaces = Default::default();
-        let if_whitelist = self.state.config.network.interfaces();
+        let mut if_whitelist = self.state.config.network.interfaces();
+        if self.state.config.wireguard.enabled {
+            if_whitelist.push(self.state.config.wireguard.interface.to_string());
+        }
         for (k, v) in ifaces.drain() {
             if if_whitelist.contains(&k) {
                 result.insert(k, v);
             }
         }
         Ok(result)
+    }
+
+    pub fn get_all_interface_names(&self) -> Result<Vec<String>> {
+        let ifaces = interfaces::get_interfaces()?;
+        Ok(ifaces.iter().map(|(_, v)| v.name.to_owned()).collect())
     }
 
     pub fn setup_sysctl(&self) -> Result<()> {
@@ -74,7 +86,7 @@ impl SystemManager {
 
     pub async fn setup_interfaces(&self) -> Result<()> {
         for wan in self.state.config.network.wans.iter() {
-            if wan.is_dhcp() || wan.is_wifi() {
+            if wan.is_dhcp() {
                 let mut dhcp_map = self.dhcp_clients.write().await;
                 let iface = wan.interface_name();
                 let client = DhcpClient::new(self.state.clone(), iface.clone()).await?;
@@ -103,6 +115,10 @@ impl SystemManager {
             let addr_str = addr.as_str();
             run_command("ip", ["link", "set", ifname, "up"]).await?;
             run_command("ip", ["addr", "change", addr_str, "dev", ifname]).await?;
+        }
+
+        if self.state.config.wireguard.enabled {
+            self.wireguard.setup().await?;
         }
         Ok(())
     }

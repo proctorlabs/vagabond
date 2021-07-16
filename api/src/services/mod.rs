@@ -6,7 +6,6 @@ mod http;
 mod iwd;
 mod process;
 mod service_trait;
-mod wireguard;
 
 pub use dhcp_client::DhcpClient;
 pub use dhcp_server::DhcpServer;
