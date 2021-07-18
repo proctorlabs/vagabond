@@ -13,6 +13,7 @@ mod ctls;
 mod interfaces;
 mod routing;
 mod wireguard;
+mod network;
 
 #[derive(Debug)]
 pub struct SystemInfo {

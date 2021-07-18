@@ -1,7 +1,7 @@
-interface       {{ self.network.lan.interface }}
+interface       {{{ self.network.lan.interface }}}
 
-start           {{ self.dhcp.lan.range.start.to_string() }}
-end             {{ self.dhcp.lan.range.end.to_string() }}
+start           {{{ self.dhcp.lan.range.start.to_string() }}}
+end             {{{ self.dhcp.lan.range.end.to_string() }}}
 
 lease_file      /var/lib/misc/udhcpd.lan.leases
 pidfile         /var/run/udhcpd.lan.pid
@@ -10,8 +10,8 @@ auto_time       3600
 max_leases      254
 remaining       yes
 
-option  router  {{ self.network.lan.address.to_string() }}
-option  dns     {{ self.network.lan.address.to_string() }}
-option  subnet  {{ self.network.lan.subnet.netmask().to_string() }}
-option  domain  {{ self.network.domain }}
+option  router  {{{ self.network.lan.address.to_string() }}}
+option  dns     {{{ self.network.lan.address.to_string() }}}
+option  subnet  {{{ self.network.lan.subnet.netmask().to_string() }}}
+option  domain  {{{ self.network.domain }}}
 option  lease   864000

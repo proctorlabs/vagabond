@@ -31,4 +31,17 @@ pub struct WireguardPeer {
     pub endpoint: IpAddr,
     pub endpoint_port: u16,
     pub allowed_ips: String,
+    pub route_internet: bool,
+}
+
+impl Default for WireguardPeer {
+    fn default() -> Self {
+        Self {
+            public_key: Default::default(),
+            endpoint: Ipv4Addr::new(0, 0, 0, 0).into(),
+            endpoint_port: 51820,
+            allowed_ips: Default::default(),
+            route_internet: false,
+        }
+    }
 }

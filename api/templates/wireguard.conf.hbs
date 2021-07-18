@@ -9,6 +9,7 @@ ListenPort = 51820
 [Peer]
 PublicKey = {{{ this.public_key }}}
 AllowedIPs = {{{ this.allowed_ips }}}
+{{#if this.route_internet }}AllowedIPs = {{{ crate::config::NetworkConfig::PUBLIC_SUBNETS }}}{{/if }}
 Endpoint = {{{ this.endpoint }}}:{{{ this.endpoint_port }}}
 PersistentKeepalive = 25
 {{/each }}

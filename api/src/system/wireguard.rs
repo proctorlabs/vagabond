@@ -9,7 +9,12 @@ pub struct Wireguard(pub StateManager);
 impl Wireguard {
     pub async fn setup(&self) -> Result<()> {
         self.write_config().await?;
-        self.up().await?;
+        match self.up().await {
+            Ok(_) => {}
+            Err(e) => {
+                error!("Failed to initialize wireguard due to failure: {:?}", e);
+            }
+        };
         Ok(())
     }
 
@@ -26,6 +31,7 @@ impl Wireguard {
     }
 
     pub async fn up(&self) -> Result<()> {
+        self.down().await.unwrap_or_default();
         run_command(
             "wg-quick",
             ["up", self.0.config.wireguard.interface.as_str()],
@@ -33,14 +39,15 @@ impl Wireguard {
         .await
     }
 
-    // Commented placeholders for planned functionality...
-    // pub async fn down(&self) -> Result<()> {
-    //     run_command(
-    //         "wg-quick",
-    //         ["down", self.0.config.wireguard.interface.as_str()],
-    //     ).await
-    // }
+    pub async fn down(&self) -> Result<()> {
+        run_command(
+            "wg-quick",
+            ["down", self.0.config.wireguard.interface.as_str()],
+        )
+        .await
+    }
 
+    // Commented placeholders for planned functionality...
     // pub async fn genkey(&self) -> Result<String> {
     //     Ok("".into())
     // }

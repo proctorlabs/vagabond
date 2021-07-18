@@ -18,8 +18,10 @@ pub async fn run_command<S: AsRef<OsStr>, I: IntoIterator<Item = S>>(
         Ok(())
     } else {
         Err(anyhow::anyhow!(
-            "Command failed with exit status {}",
-            output.status
+            "Command failed with error {}\n{}\n{}",
+            output.status,
+            std::str::from_utf8(&output.stdout)?,
+            std::str::from_utf8(&output.stderr)?,
         ))
     }
 }

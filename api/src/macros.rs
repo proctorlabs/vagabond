@@ -15,12 +15,12 @@ macro_rules! config_file {
                 Self::write_to(Self::FILE_PATH, config).await
             }
 
-            pub async fn write_to<S: AsRef<std::ffi::OsStr> + ?Sized>(
+            pub async fn write_to<S: AsRef<std::ffi::OsStr> + ?Sized + std::fmt::Display>(
                 path: &S,
                 config: crate::VagabondConfig,
             ) -> anyhow::Result<()> {
                 use tokio::io::AsyncWriteExt;
-                info!("Writing configuration to {}", Self::FILE_PATH);
+                info!("Writing configuration to {}", path);
                 let config_contents = $class(config).to_string();
                 let filepath = std::path::Path::new(path);
                 let dirpath = filepath.parent().unwrap();
